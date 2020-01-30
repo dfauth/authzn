@@ -1,10 +1,10 @@
-package com.github.dfauth.jwt_jaas.authzn;
+package com.github.dfauth.authzn;
 
 import java.util.Collections;
 import java.util.Set;
 
-import static com.github.dfauth.jwt_jaas.authzn.AuthorizationDecisionEnum.*;
-import static com.github.dfauth.jwt_jaas.authzn.PermissionDecisionContext.NEVER;
+import static com.github.dfauth.authzn.AuthorizationDecisionEnum.*;
+import static com.github.dfauth.authzn.PermissionDecisionContext.NEVER;
 
 public class Directive {
     private final Set<Principal> principals;

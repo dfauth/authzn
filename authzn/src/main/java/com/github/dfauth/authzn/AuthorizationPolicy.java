@@ -1,10 +1,10 @@
-package com.github.dfauth.jwt_jaas.authzn;
+package com.github.dfauth.authzn;
 
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static com.github.dfauth.jwt_jaas.authzn.AuthorizationDecisionEnum.DENY;
-import static com.github.dfauth.jwt_jaas.authzn.AuthorizationDecision.or;
+import static com.github.dfauth.authzn.AuthorizationDecisionEnum.DENY;
+import static com.github.dfauth.authzn.AuthorizationDecision.or;
 
 public abstract class AuthorizationPolicy {
 

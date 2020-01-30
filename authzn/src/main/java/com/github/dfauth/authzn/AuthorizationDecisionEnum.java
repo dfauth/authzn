@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas.authzn;
+package com.github.dfauth.authzn;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

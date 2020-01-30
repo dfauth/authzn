@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas.authzn;
+package com.github.dfauth.authzn;
 
 public class ImmutablePrincipal implements Principal {
 

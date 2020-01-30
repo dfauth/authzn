@@ -1,12 +1,10 @@
-package com.github.dfauth.jwt_jaas.authzn
+package com.github.dfauth.authzn
 
-import Actions.using
-import Assertions.WasRunAssertion
-import PrincipalType.{ROLE, USER}
-import TestUtils.TestAction._
-import TestUtils.{TestAction, TestPermission}
+import com.github.dfauth.authzn.Actions.using
+import com.github.dfauth.authzn.Assertions.WasRunAssertion
+import com.github.dfauth.authzn.TestUtils.TestAction._
+import com.github.dfauth.authzn.TestUtils.{TestAction, TestPermission}
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.{FlatSpec, Matchers}
 
 import scala.util.{Failure, Success}
 

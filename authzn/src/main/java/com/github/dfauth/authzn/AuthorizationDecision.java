@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas.authzn;
+package com.github.dfauth.authzn;
 
 import java.util.concurrent.Callable;
 import java.util.function.BinaryOperator;

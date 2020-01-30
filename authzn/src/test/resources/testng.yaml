@@ -5,7 +5,7 @@ tests:
     parameters: { }
     excludedGroups: [ ]
     classes:
-      - com.github.dfauth.jwt_jaas.authzn.ActionsTest
-      - com.github.dfauth.jwt_jaas.authzn.AuthorizationDecisionTest
-      - com.github.dfauth.jwt_jaas.authzn.PermissionTest
-      - com.github.dfauth.jwt_jaas.authzn.ResourceHierarchyTest
+      - com.github.dfauth.authzn.ActionsTest
+      - com.github.dfauth.authzn.AuthorizationDecisionTest
+      - com.github.dfauth.authzn.PermissionTest
+      - com.github.dfauth.authzn.ResourceHierarchyTest
