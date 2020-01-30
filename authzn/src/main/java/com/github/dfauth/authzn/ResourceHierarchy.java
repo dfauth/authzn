@@ -13,7 +13,7 @@ public class ResourceHierarchy<K,V> {
     private static ResourceHierarchy ROOT = new ResourceHierarchy();
 
     private Map<K, ResourceHierarchy<K,V>> children = new HashMap<>();
-    private final Optional<Resource<K,V>> resource;
+    private Optional<Resource<K,V>> resource;
 
     public ResourceHierarchy() {
         resource = Optional.empty();
@@ -60,13 +60,18 @@ public class ResourceHierarchy<K,V> {
 
     private ResourceHierarchy<K,V> findNearest(Iterator<K> it, Consumer<Resource<K,V>> consumer) {
         if(!it.hasNext()) {
+            this.resource.ifPresent(consumer);
+            logger.debug(String.format("found resource %s", this));
             return this;
         } else {
             Optional<ResourceHierarchy<K, V>> next = find(it.next());
             return next.map(h -> {
                 h.resource().ifPresent(consumer);
                 return h.findNearest(it, consumer);
-            }).orElseGet(() ->this);
+            }).orElseGet(() ->{
+                logger.debug(String.format("found resource %s", this));
+                return this;
+            });
         }
     }
 
@@ -80,6 +85,9 @@ public class ResourceHierarchy<K,V> {
 
     private ResourceHierarchy findOrPut(Iterator<K> it, Resource resource) {
         if(!it.hasNext()) {
+            if(!this.resource.isPresent()) {
+                this.resource = Optional.of(resource);
+            }
             return this;
         } else {
             K key = it.next();
@@ -110,6 +118,7 @@ public class ResourceHierarchy<K,V> {
     public Collection<Resource<K,V>> findAllResourcesInPath(Iterable<K> path) {
         Deque<Resource<K,V>> stack = new ArrayDeque();
         findNearest(path, r -> stack.push(r));
+        logger.debug(String.format("for path %s found resources: %s",path,stack));
         return stack;
     }
 

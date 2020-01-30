@@ -20,6 +20,10 @@ public class Actions<T extends Action> {
         return new Actions(new HashSet(Arrays.asList(actionClass.getEnumConstants())));
     }
 
+    public static boolean isAllActions(String n) {
+        return ALL.equals(n);
+    }
+
     public Set<Action> parse(String str) {
         return str.contains(ALL) ?
                 this.actions :

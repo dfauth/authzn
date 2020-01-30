@@ -7,46 +7,34 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ImmutableSubject implements Subject {
-    private final Principal userPrincipal;
-    private final Set<Principal> rolePrincipals;
-    private final Set<Principal> all;
 
-    public ImmutableSubject(Principal userPrincipal) {
-        this(userPrincipal, Collections.emptySet());
+    private final Set<Principal> principals;
+
+    public static ImmutableSubject of(Principal... principals) {
+        return new ImmutableSubject(new HashSet(Arrays.asList(principals)));
     }
 
-    public ImmutableSubject(Principal userPrincipal, Principal... rolePrincipals) {
-        this(userPrincipal, new HashSet(Arrays.asList(rolePrincipals)));
+    public static ImmutableSubject of(Set<Principal> principals) {
+        return new ImmutableSubject(principals);
     }
 
-    ImmutableSubject(Principal userPrincipal, Set<Principal> rolePrincipals) {
-        this.userPrincipal = userPrincipal;
-        this.rolePrincipals = rolePrincipals;
-        this.all = getPrincipals();
+    ImmutableSubject(Set<Principal> principals) {
+        this.principals = Collections.unmodifiableSet(principals);
     }
 
     @Override
     public Set<Principal> getPrincipals() {
-        if(this.all != null) {
-            return this.all;
-        }
-        HashSet<Principal> tmp = new HashSet<>(rolePrincipals);
-        tmp.add(userPrincipal);
-        return Collections.unmodifiableSet(tmp);
+        return principals;
     }
 
-    public Subject with(ImmutablePrincipal p) {
-        Set tmp = new HashSet(rolePrincipals);
+    public Subject with(Principal p) {
+        HashSet<Principal> tmp = new HashSet<>(principals);
         tmp.add(p);
-        return new ImmutableSubject(userPrincipal, tmp);
-    }
-
-    public Principal getUserPrincipal() {
-        return userPrincipal;
+        return of(tmp);
     }
 
     @Override
     public String toString() {
-        return "user: "+userPrincipal.getName() + " roles: "+rolePrincipals.stream().map(p -> p.getName()).collect(Collectors.toSet());
+        return String.format("ImmutablePrincipal(%s)",principals);
     }
 }

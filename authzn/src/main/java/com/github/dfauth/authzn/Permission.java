@@ -4,7 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class Permission {
 
@@ -13,7 +16,7 @@ public abstract class Permission {
     private static final String ROOT_RESOURCE = "ROOT";
 
     private final String resource;
-    private final Set<Action> actions;
+    private final ActionSet actions;
     
 
     public Permission() {
@@ -34,12 +37,13 @@ public abstract class Permission {
 
     public Permission(String resource, Set<Action> actions) {
         this.resource = resource;
-        this.actions = actions;
+        this.actions = ActionSet.parse(actions.stream().map(a -> a.name()).collect(Collectors.toSet()));
     }
 
-//    public Resource getResource() {
-//        return new SimpleResource(resource);
-//    }
+    public Permission(String resource, List<String> actions) {
+        this.resource = resource;
+        this.actions = ActionSet.parse(new HashSet(actions));
+    }
 
     @Override
     public boolean equals(Object obj) {
@@ -67,28 +71,30 @@ public abstract class Permission {
             return false;
         }
         if(permission == this) {
+            logger.debug("identical permission comparison: "+this);
             return true;
         }
-        // if the permission parameter is the same class or a subclass of this permission
-        if(this.getClass().isAssignableFrom(permission.getClass())) {
-            // test if this resource implies the resource in the permission
-            if(resourceResolver.resource(new SimpleResource(this.resource)).implies(new SimpleResource(permission.resource))) {
-                // test if this action implies the action in thr permission
-                // special case - no actions on either side
-                return (this.actions.isEmpty() && permission.actions.isEmpty()) ||
-                        this.actions.containsAll(permission.actions);
-            }
+        // test if this resource implies the resource in the permission
+        if(resourceResolver.resource(new SimpleResource(this.resource)).implies(new SimpleResource(permission.resource))) {
+            // test if this action implies the action in thr permission
+            // special case - no actions on either side
+            return (this.actions.implies(permission.actions));
+        } else {
+            logger.debug(String.format("unrelated resources %s and %s",this.resource,permission.resource));
+            return false;
         }
-        return false;
     }
 
     public String getResource() {
         return resource;
     }
 
-    public Set<Action> getActions() {
+    public ActionSet getActions() {
         return this.actions;
     }
 
-//    public abstract Optional<AuthorizationDecision> isAuthorizedBy(ResourceActionAuthorizationContext ctx);
+    @Override
+    public String toString() {
+        return String.format("Permission(%s,%s)",resource, actions);
+    }
 }

@@ -1,5 +1,9 @@
 package com.github.dfauth.authzn;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class ImmutablePrincipal implements Principal {
 
     private final PrincipalType principalType;
@@ -54,5 +58,19 @@ public class ImmutablePrincipal implements Principal {
     @Override
     public String toString() {
         return String.format("ImmutablePrincipal(%s,%s,%s)",principalType,source,name);
+    }
+
+    public Subject asSubject() {
+        return () -> Collections.singleton(this);
+    }
+
+    public Subject with(ImmutablePrincipal principal) {
+        return with(Collections.singleton(principal));
+    }
+
+    public Subject with(Set<ImmutablePrincipal> principals) {
+        Set<Principal> tmp = new HashSet<Principal>(principals);
+        tmp.add(this);
+        return ImmutableSubject.of(tmp);
     }
 }
