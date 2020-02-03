@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 import java.util.Iterator;
 import java.util.Optional;
 
+import static com.github.dfauth.authzn.ActionSet.ALL_ACTIONS;
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.authzn.SimpleResource.parseResourceString;
 import static org.testng.Assert.assertEquals;
@@ -101,7 +102,7 @@ public class ResourceHierarchyTest {
     }
 
     private DirectiveResource asResource(String resource) {
-        Directive directive = new Directive(ROLE.of("user"), new Permission(resource){});
+        Directive directive = new Directive(ROLE.of("user"), new Permission(resource, ALL_ACTIONS){});
         return new DirectiveResource(directive);
     }
 

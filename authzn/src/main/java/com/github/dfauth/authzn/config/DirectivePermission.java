@@ -1,11 +1,10 @@
 package com.github.dfauth.authzn.config;
 
-import com.github.dfauth.authzn.Permission;
+import com.github.dfauth.authzn.ActionSet;
+import com.github.dfauth.authzn.ResourcePermission;
 
-import java.util.List;
-
-public class DirectivePermission extends Permission {
-    public DirectivePermission(String resource, List<String> actions) {
+public class DirectivePermission extends ResourcePermission<ActionSet> {
+    public DirectivePermission(String resource, ActionSet actions) {
         super(resource, actions);
     }
 }

@@ -1,7 +1,5 @@
 package com.github.dfauth.authzn;
 
-import com.github.dfauth.authzn.utils.StreamUtils;
-
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -37,7 +35,7 @@ public abstract class AuthorizationPolicy {
                 try {
                     return decision.run(callable);
                 } catch(SecurityException e) {
-                    throw new SecurityException(subject+" is not authorized to perform actions "+permission.getActions()+" on resource "+permission.getResource());
+                    throw new SecurityException(subject+" is not authorized to perform actions "+permission.getAction()+" on resource "+permission.getResource());
                 }
             }
         };

@@ -31,7 +31,7 @@ public class PermissionTest {
     public void testPolicyRole() {
 
         ImmutableSubject subject = ImmutableSubject.of(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"));
-        Permission perm = new TestPermission("/a/b/c/d", using(TestAction.class).parse("read"));
+        Permission perm = new TestPermission("/a/b/c/d", TestAction.READ);
         Directive directive = new Directive(ROLE.of("superuser"), perm);
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
 
@@ -53,7 +53,7 @@ public class PermissionTest {
     public void testRunner() {
 
         ImmutableSubject subject = ImmutableSubject.of(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"));
-        Permission perm = new TestPermission("/a/b/c/d", using(TestAction.class).parse("*"));
+        Permission perm = new TestPermission("/a/b/c/d", TestAction.READ);
         Directive directive = new Directive(ROLE.of("superuser"), perm);
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
 

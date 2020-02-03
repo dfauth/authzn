@@ -33,7 +33,7 @@ public class PolicyConfig {
             builder.withPrincipals(principals);
 
             String resource = c.getString("resource");
-            List<String> actions = c.getStringList("actions");
+            ActionSet actions = ActionSet.parse(new HashSet(c.getStringList("actions")));
             builder.withPermission(new DirectivePermission(resource, actions));
             optionalString(config, "decision").ifPresent(v -> {
                 builder.withAuthorizationDecision(AuthorizationDecisionEnum.valueOf(v.toUpperCase()));
