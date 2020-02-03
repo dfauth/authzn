@@ -58,11 +58,11 @@ public class ResourceHierarchyTest {
         assertTrue(it.hasNext());
         Directive next = it.next();
         assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), path);
+        assertEquals(next.getResource().getResource(), path);
         assertTrue(it.hasNext());
         next = it.next();
         assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), "/a");
+        assertEquals(next.getResource().getResource(), "/a");
         assertFalse(it.hasNext());
 
         path = "/a/ab/abc/resource0";
@@ -72,24 +72,24 @@ public class ResourceHierarchyTest {
         assertTrue(it.hasNext());
         next = it.next();
         assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), path);
+        assertEquals(next.getResource().getResource(), path);
 
         assertTrue(it.hasNext());
         next = it.next();
         assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), "/a/ab/abc");
-        assertTrue(it.hasNext());
-
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), "/a/ab");
+        assertEquals(next.getResource().getResource(), "/a/ab/abc");
         assertTrue(it.hasNext());
 
         assertTrue(it.hasNext());
         next = it.next();
         assertNotNull(next);
-        assertEquals(next.getPermission().getResource(), "/a");
+        assertEquals(next.getResource().getResource(), "/a/ab");
+        assertTrue(it.hasNext());
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertNotNull(next);
+        assertEquals(next.getResource().getResource(), "/a");
         assertFalse(it.hasNext());
 
         path = "/c/ab/abc/resource0";
