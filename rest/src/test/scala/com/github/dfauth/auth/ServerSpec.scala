@@ -50,6 +50,35 @@ class ServerSpec extends TestNGSuite with LazyLogging {
     }
   }
 
+  @Test(groups = Array("rest"))
+  def testForbidden():Unit = {
+
+    val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
+    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic, issuer)
+
+
+    import com.github.dfauth.auth.Routes._
+    val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
+    val bindingFuture = endPoint.start()
+
+    val binding = Await.result(bindingFuture, 5.seconds)
+
+    try {
+      val userId: String = "fred"
+
+      val jwtBuilder = new JWTBuilder(this.issuer, testKeyPair.getPrivate)
+      val user = User.of(userId, role("test:user")) // this endpoint requires the 'admin' role
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
+      given().header("Authorization", "Bearer "+token).
+        when().log().headers().
+        get(endPointUrl(binding, "hello")).
+        then().
+        statusCode(403)
+    } finally {
+      endPoint.stop(bindingFuture)
+    }
+  }
+
   @Test
   def testTokenFail():Unit = {
 
