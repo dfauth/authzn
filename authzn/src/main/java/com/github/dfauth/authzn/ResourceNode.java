@@ -72,7 +72,9 @@ public abstract class ResourceNode<V> {
 
     private Optional<ResourceNode<V>> find(Iterator<String> it, BiConsumer<Iterator<String>, ResourceNode<V>> consumer, Function<ResourceNode<V>, Optional<ResourceNode<V>>> f) {
         if(!it.hasNext()) {
-//            consumer.accept(it, this);
+            if(isRoot()) {
+                consumer.accept(it, this);
+            }
             return Optional.of(this);
         } else {
             String key = it.next();
@@ -86,6 +88,8 @@ public abstract class ResourceNode<V> {
             });
         }
     }
+
+    protected abstract boolean isRoot();
 
     public Collection<Resource<V>> resource() {
         return resource;

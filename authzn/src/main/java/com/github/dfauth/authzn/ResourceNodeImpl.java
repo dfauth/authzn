@@ -23,4 +23,9 @@ public class ResourceNodeImpl<V> extends ResourceNode<V> {
         return this;
     }
 
+    @Override
+    protected boolean isRoot() {
+        return false;
+    }
+
 }

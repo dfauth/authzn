@@ -13,7 +13,7 @@ import static org.testng.Assert.assertTrue;
 
 public class PermissionTest {
 
-    //@Test
+    @Test
     public void testPolicySimplePrincipal() {
 
         ImmutablePrincipal fred = USER.of("fred");

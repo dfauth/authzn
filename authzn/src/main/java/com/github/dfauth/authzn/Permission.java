@@ -55,26 +55,6 @@ public abstract class Permission {
         return resource.hashCode() | action.hashCode();
     }
 
-//    public boolean implies(Permission permission, ResourceResolver resourceResolver) {
-//        if(permission == null) {
-//            logger.warn("null permission object passed to implies method of permission");
-//            return false;
-//        }
-//        if(permission == this) {
-//            logger.debug("identical permission comparison: "+this);
-//            return true;
-//        }
-//        // test if this resource implies the resource in the permission
-//        if(resourceResolver.resource(new SimpleResource(this.resource)).implies(new SimpleResource(permission.resource))) {
-//            // test if this action implies the action in thr permission
-//            // special case - no actions on either side
-//            return (this.action.implies(permission.action));
-//        } else {
-//            logger.debug(String.format("unrelated resources %s and %s",this.resource,permission.resource));
-//            return false;
-//        }
-//    }
-
     public ResourcePath getResourcePath() {
         return resource;
     }
@@ -86,5 +66,9 @@ public abstract class Permission {
     @Override
     public String toString() {
         return String.format("Permission(%s,%s)",resource, action);
+    }
+
+    public boolean allows(AuthorizationDecision decision) {
+        return true;
     }
 }

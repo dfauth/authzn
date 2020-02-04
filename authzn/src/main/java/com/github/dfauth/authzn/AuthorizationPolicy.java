@@ -11,18 +11,21 @@ public abstract class AuthorizationPolicy {
     public final AuthorizationDecision permit(Subject subject, Permission permission) {
 
         AuthorizationDecision decision =
-               directivesFor(permission.getResourcePath()).stream()             // for every directive associated with the given resource, most specific first
-                       .filter(d -> permission.getAction()                      // filter out directives
-                               .map(a -> d.appliesToAction(a))                  // where the action is not allowed
-                               .orElse(true)                              // allowing it through where no action is available
+               directivesFor(permission.getResourcePath()).stream()             // for every directive associated with the given resource, most specific first,
+                       .filter(d -> permission.getAction()                      // filter out directives...
+                               .map(a -> d.appliesToAction(a))                  // ...where the action is disallowed by the directive...
+                               .orElse(true)                              // ...allowing it through where no action is specified
                        )
-                       .filter(d -> !subject.getPrincipals().stream()            // filter out directives where no principal is acceptable
-                                    .filter(p -> d.appliesToPrincipal(p))        // by collecting all acceptable principals and
-                                    .collect(Collectors.toList()).isEmpty()      // testing that the list is not empty
-                       )
+                       .filter(d -> !subject.getPrincipals().stream()            // for surviving directives, filter out directives where no principal is acceptable...
+                                    .filter(p -> d.appliesToPrincipal(p))        // ...by collecting all acceptable principals and...
+                                    .collect(Collectors.toList()).isEmpty()      // ...testing that the resulting list is not empty (ie. at least one principal is allowed...
+                       )                                                         // ...to perform the requested action)
                        .map(d -> d.getDecision())                                // extract the decision from the directive
-                       .findFirst()                                              // the first decision (ie. nearest in teh resource hierarch) has priority
-                       .orElse(DENY);                                            // but  if none is found, deny
+                       .findFirst()                                              // the first decision (ie. the evaluation of the nearest surviving directive in the resource hierarchy) has priority
+                       .filter(d -> d.isAllowed())                               // if positive...
+                       .filter(d -> permission.allows(d))                        // ...a final callback allows the permission to reverse a positive decision allowing the action in order to allow custom logic
+                                                                                 //
+                       .orElse(DENY);                                            // but  if no directive survived, deny
 
         // wrap it in an anonymous class to allow us to log more information
         return new AuthorizationDecision(){
@@ -46,8 +49,6 @@ public abstract class AuthorizationPolicy {
             }
         };
     }
-
-//    protected abstract ResourceResolver getResourceResolver();
 
     abstract Collection<Directive> directivesFor(ResourcePath resourcePath);
 }
