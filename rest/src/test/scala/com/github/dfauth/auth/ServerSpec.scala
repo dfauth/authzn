@@ -18,7 +18,7 @@ class ServerSpec extends LazyLogging {
   val host = "localhost"
   val port = 0
 
-  @Test
+  @Test(groups = Array("rest"))
   def testToken() = {
 
     val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)

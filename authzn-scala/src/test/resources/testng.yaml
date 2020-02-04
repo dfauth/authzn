@@ -1,0 +1,8 @@
+name: rest
+
+tests:
+  - name: fred
+    parameters: { }
+    excludedGroups: [ ]
+    classes:
+      - com.github.dfauth.rest.ServerSpec
