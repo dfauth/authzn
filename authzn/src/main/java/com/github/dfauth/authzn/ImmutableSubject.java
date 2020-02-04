@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ImmutableSubject implements Subject {
 
@@ -27,7 +26,7 @@ public class ImmutableSubject implements Subject {
         return principals;
     }
 
-    public Subject with(Principal p) {
+    public ImmutableSubject with(Principal p) {
         HashSet<Principal> tmp = new HashSet<>(principals);
         tmp.add(p);
         return of(tmp);

@@ -26,6 +26,7 @@
 
   <modules>
     <module>jwt</module>
+    <module>rest</module>
     <module>authzn</module>
     <module>authzn-scala</module>
     <module>authzn-test-utils</module>
