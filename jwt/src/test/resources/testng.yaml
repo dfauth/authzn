@@ -1,0 +1,10 @@
+name: jwt
+
+tests:
+  - name: fred
+    parameters: { count: 10 }
+    excludedGroups: [ broken ]
+    classes:
+      - com.github.dfauth.jwt.KeyPairTestCase
+      - com.github.dfauth.jwt.ProviderTestCase
+      - com.github.dfauth.jwt.TestCase

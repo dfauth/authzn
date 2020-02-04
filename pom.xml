@@ -25,6 +25,7 @@
   </properties>
 
   <modules>
+    <module>jwt</module>
     <module>authzn</module>
     <module>authzn-scala</module>
     <module>authzn-test-utils</module>
