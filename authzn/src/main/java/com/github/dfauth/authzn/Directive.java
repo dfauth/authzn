@@ -70,6 +70,14 @@ public class Directive {
         return String.format("Directive(%s,%s,%s,%s)",principals, resource, actionSet, decision);
     }
 
+    public boolean appliesToAction(Action a) {
+        return actionSet.implies(a);
+    }
+
+    public boolean appliesToPrincipal(Principal p) {
+        return principals.contains(p);
+    }
+
 //    public DirectiveContext withResolver(ResourceResolver resolver) {
 //        return new DirectiveContext() {
 //            @Override

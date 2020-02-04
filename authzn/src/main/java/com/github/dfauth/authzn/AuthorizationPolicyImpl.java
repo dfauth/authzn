@@ -3,14 +3,13 @@ package com.github.dfauth.authzn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class AuthorizationPolicyImpl extends AuthorizationPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationPolicyImpl.class);
 
-    ResourceNode<Directive> hierarchy = new RootResourceNode<>();
+    ResourceNode<Directive> directiveHierarchy = new RootResourceNode<>();
 
     public AuthorizationPolicyImpl(Directive directive) {
         this(Collections.singletonList(directive));
@@ -18,7 +17,7 @@ public class AuthorizationPolicyImpl extends AuthorizationPolicy {
 
     public AuthorizationPolicyImpl(List<Directive> directives) {
         directives.forEach(d -> {
-            hierarchy.add(new SimpleResource<>(d.getResourcePath(), d));
+            directiveHierarchy.add(new SimpleResource<>(d.getResourcePath(), d));
         });
     }
 
@@ -33,14 +32,9 @@ public class AuthorizationPolicyImpl extends AuthorizationPolicy {
 //            return result;
 //        };
 //    }
-//
-//    @Override
-//    Set<Directive> directivesFor(Permission permission) {
-//        Set<Directive> directives = new HashSet<>();
-//        hierarchy.walk(resource -> resource.payload.ifPresent(d -> {
-//            directives.add(d);
-//            logger.debug(String.format("found directive %s",d));
-//        }));
-//        return directives;
-//    }
+
+    @Override
+    Collection<Directive> directivesFor(ResourcePath resourcePath) {
+        return directiveHierarchy.findAllInPath(resourcePath.getPath());
+    }
 }
