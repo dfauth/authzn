@@ -75,7 +75,7 @@ public class PermissionTest {
             WasRunAssertion a = decision.run(() -> new WasRunAssertion().run());
             assertTrue(a.wasRun()); // expecting authzn success
         } catch (SecurityException e) {
-            fail("Oops, expected it to be authorized");
+            org.testng.Assert.fail("Oops, expected it to be authorized");
         }
     }
 }

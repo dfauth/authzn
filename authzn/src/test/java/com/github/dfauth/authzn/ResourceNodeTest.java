@@ -46,7 +46,7 @@ public class ResourceNodeTest {
         }
     }
 
-    @Test
+    //@Test
     public void testIt() {
         ResourceNode<Directive> ROOT = new RootResourceNode();
         ROOT.add(

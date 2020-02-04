@@ -1,8 +1,6 @@
 package com.github.dfauth.authzn
 
 import com.github.dfauth.authzn.PrincipalType._
-import com.github.dfauth.authzn.AuthorizationPolicyMonad
-import com.github.dfauth.authzn.Actions.using
 import com.github.dfauth.authzn.Assertions.WasRunAssertion
 import com.github.dfauth.authzn.TestUtils.TestAction._
 import com.github.dfauth.authzn.TestUtils.{TestAction, TestPermission}
@@ -17,9 +15,10 @@ class AuthorizationSpec extends LazyLogging {
   @Test
   def testIt() = {
 
-    val subject = new ImmutableSubject(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"))
-    val perm = new TestPermission("/a/b/c/d", using(classOf[TestAction]).parse("*"))
-    val directive = new Directive(ROLE.of("superuser"), perm)
+    val resource: String = "/a/b/c/d"
+    val subject = ImmutableSubject.of(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"))
+    val perm = new TestPermission(resource, TestAction.READ)
+    val directive = new Directive(ROLE.of("superuser"), new ResourcePath(resource), ActionSet.ALL_ACTIONS)
     val policy = AuthorizationPolicyMonadImpl(directive)
 
     val testPerm = new TestPermission("/a/b/c/d/e/f/g", READ)
