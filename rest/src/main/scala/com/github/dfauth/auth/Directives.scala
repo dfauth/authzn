@@ -39,7 +39,7 @@ object Directives extends LazyLogging {
 
   val toSubject: User => Subject = u => {
     val s = ImmutableSubject.of(USER.of(u.getUserId))
-    u.getRoles.asScala.map(r => ROLE.of(r.getRoleName)).foldLeft(s) { (s,p) =>
+    u.getRoles.asScala.map(r => ROLE.of(r.getRolename)).foldLeft(s) { (s, p) =>
       s.`with`(p)
     }
   }

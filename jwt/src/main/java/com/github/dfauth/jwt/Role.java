@@ -4,11 +4,11 @@ public class Role {
 
     public static final String DEFAULT_SYSTEM_ID = "default";
 
-    private String roleName;
+    private String rolename;
     private String systemId;
 
     Role(String systemId, String roleName) {
-        this.roleName = roleName;
+        this.rolename = roleName;
         this.systemId = systemId;
     }
 
@@ -16,8 +16,8 @@ public class Role {
         return systemId;
     }
 
-    public String getRoleName() {
-        return roleName;
+    public String getRolename() {
+        return rolename;
     }
 
     public static Role role(String role) {

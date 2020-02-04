@@ -18,12 +18,13 @@ class ServerSpec extends TestNGSuite with LazyLogging {
 
   val host = "localhost"
   val port = 0
+  val issuer = "me"
 
   @Test(groups = Array("rest"))
-  def testToken() = {
+  def testToken():Unit = {
 
     val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
-    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
+    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic, issuer)
 
 
     import com.github.dfauth.auth.Routes._
@@ -35,7 +36,7 @@ class ServerSpec extends TestNGSuite with LazyLogging {
     try {
       val userId: String = "fred"
 
-      val jwtBuilder = new JWTBuilder("me",testKeyPair.getPrivate)
+      val jwtBuilder = new JWTBuilder(this.issuer, testKeyPair.getPrivate)
       val user = User.of(userId, role("test:admin"), role("test:user"))
       val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
@@ -43,17 +44,17 @@ class ServerSpec extends TestNGSuite with LazyLogging {
         get(endPointUrl(binding, "hello")).
         then().
         statusCode(200).
-        body("say",equalTo(s"hello to authenticated ${userId}"))
+        body("say",equalTo(s"hello to authenticated ${user.getUserId}"))
     } finally {
       endPoint.stop(bindingFuture)
     }
   }
 
   @Test
-  def testTokenFail() = {
+  def testTokenFail():Unit = {
 
     val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
-    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
+    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic, issuer)
 
 
     import com.github.dfauth.auth.Routes._
@@ -65,7 +66,7 @@ class ServerSpec extends TestNGSuite with LazyLogging {
     try {
       val userId: String = "fred"
 
-      val jwtBuilder = new JWTBuilder("me",testKeyPair.getPrivate)
+      val jwtBuilder = new JWTBuilder(this.issuer,testKeyPair.getPrivate)
       val user = User.of(userId, role("test:admin"), role("test:user"))
       val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).build()
       val token1 = token.map(_ match {

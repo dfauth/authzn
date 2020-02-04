@@ -1,5 +1,6 @@
 package com.github.dfauth.auth;
 
+import com.github.dfauth.authzn.PrincipalType;
 import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.jwt.UserCtx;
 
@@ -20,7 +21,11 @@ public class UserCtxImpl implements UserCtx<Subject> {
     @Override
     public String userId() {
         // should find a user principal
-        return null;
+        return payload.getPrincipals().stream()
+                .filter(p -> p.getPrincipalType() == PrincipalType.USER)
+                .findFirst()
+                .map(p -> p.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Missing userid"));
     }
 
     @Override

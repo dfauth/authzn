@@ -26,16 +26,18 @@ public class JWTVerifier {
     };
 
     private final PublicKey publicKey;
+    private final String issuer;
 
-    public JWTVerifier(PublicKey publicKey) {
+    public JWTVerifier(PublicKey publicKey, String issuer) {
         this.publicKey = publicKey;
+        this.issuer = issuer;
     }
 
     public <T> TokenAuthentication<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
         try {
             Jws<Claims> claims = Jwts.parser()
                     .setSigningKey(publicKey)
-                    .requireIssuer("TitanOTC")
+                    .requireIssuer(issuer)
                     .parseClaimsJws(token);
             return TokenAuthentication.Success.with(f.apply(claims));
         } catch (RuntimeException e) {

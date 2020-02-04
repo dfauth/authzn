@@ -10,16 +10,17 @@ import com.typesafe.scalalogging.LazyLogging
 
 object Routes extends LazyLogging {
 
+  val issuer = "me"
   val keyPair: KeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
-  val jwtBuilder = new JWTBuilder("me",keyPair.getPrivate)
-  val jwtVerifier = new JWTVerifier(keyPair.getPublic)
+  val jwtBuilder = new JWTBuilder(issuer,keyPair.getPrivate)
+  val jwtVerifier = new JWTVerifier(keyPair.getPublic, issuer)
 
 
   def hello(jwtVerifier: JWTVerifier) =
     path("hello") {
       get {
-        authenticate(jwtVerifier) { user =>
-          complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to authenticated ${user.payload}"}"""))
+        authenticate(jwtVerifier) { userCtx =>
+          complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to authenticated ${userCtx.userId()}"}"""))
         }
       }
     }
