@@ -1,12 +1,7 @@
 package com.github.dfauth.authzn;
 
-public interface Action<E extends Enum<E>> extends Implicable<E> {
+public interface Action {
+    boolean implies(Action action);
 
     String name();
-
-    @Override
-    default boolean implies(E e) {
-        return this.equals(e);
-    }
-
 }

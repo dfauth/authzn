@@ -3,41 +3,21 @@ package com.github.dfauth.authzn;
 public class TestUtils {
 
     static class RolePermission extends Permission {
+    }
 
-        @Override
-        protected boolean _equals(Object obj) {
-            return true;
-        }
+    static class TestPermission extends Permission {
 
-        @Override
-        protected boolean _implies(Permission permission, ResourceResolver resourceResolver) {
-            return true;
+        public TestPermission(String resource, Action action) {
+            super(new ResourcePath(resource), action);
         }
     }
 
-    static class TestPermission extends ResourcePermission<TestAction> {
-
-        public TestPermission(String resource, TestAction action) {
-            super(resource, action);
-        }
-
-        @Override
-        protected boolean _equals(Object obj) {
-            return false;
-        }
-
-        @Override
-        protected boolean _implies(Permission permission, ResourceResolver resourceResolver) {
-            return false;
-        }
-    }
-
-    enum TestAction implements Action<TestAction> {
+    enum TestAction implements Action {
         READ, WRITE;
 
         @Override
-        public boolean implies(TestAction action) {
-            return action.ordinal() < ordinal();
+        public boolean implies(Action action) {
+            return false;
         }
     }
 }

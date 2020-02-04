@@ -1,7 +1,10 @@
 package com.github.dfauth.authzn;
 
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 public interface AuthorizationDecision {
 
@@ -34,6 +37,14 @@ public interface AuthorizationDecision {
                 throw new SecurityException("denied");
             }
         } : that;
+    }
+
+    default AuthorizationDecision map(UnaryOperator<AuthorizationDecision> f) {
+        return f.apply(this);
+    }
+
+    default Optional<AuthorizationDecision> filter(Predicate<AuthorizationDecision> p) {
+        return Optional.of(this).filter(p);
     }
 
     <R> R run(Callable<R> callable) throws SecurityException;

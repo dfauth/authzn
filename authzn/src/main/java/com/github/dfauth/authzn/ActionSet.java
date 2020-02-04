@@ -3,15 +3,13 @@ package com.github.dfauth.authzn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public interface ActionSet extends Implicable<ActionSet> {
-
-    boolean containsAll(ActionSet actions);
-
-    boolean implies(ActionSet actions);
+public interface ActionSet extends Action {
 
     class ActionSetCollection implements ActionSet {
 
@@ -24,23 +22,24 @@ public interface ActionSet extends Implicable<ActionSet> {
         }
 
         @Override
-        public boolean containsAll(ActionSet actions) {
-            if(actions instanceof AllActionsSet) {
-                logger.debug(String.format("containsAll(%s,%s) returns false",this, actions));
+        public boolean implies(Action action) {
+            if(action instanceof AllActionsSet) {
+                logger.debug(String.format("containsAll(%s,%s) returns false",this, action));
                 return false;
-            } if(actions instanceof NoActionSet) {
-                logger.debug(String.format("containsAll(%s,%s) returns true",this, actions));
-                return true;
+            } else if(action instanceof ActionSetCollection) {
+                boolean result = names.containsAll(((ActionSetCollection) action).names);
+                logger.debug(String.format("containsAll(%s,%s) returns %s",this, action, result));
+                return result;
             } else {
-                boolean result = names.containsAll(((ActionSetCollection) actions).names);
-                logger.debug(String.format("containsAll(%s,%s) returns %s",this, actions, result));
+                boolean result = names.contains(action.name());
+                logger.debug(String.format("containsAll(%s,%s) returns %s",this, action, result));
                 return result;
             }
         }
 
         @Override
-        public boolean implies(ActionSet actions) {
-            return containsAll(actions);
+        public String name() {
+            return toString();
         }
 
         @Override
@@ -51,21 +50,17 @@ public interface ActionSet extends Implicable<ActionSet> {
 
     class AllActionsSet implements ActionSet {
 
-        private static final Logger logger = LoggerFactory.getLogger(AllActionsSet.class);
-
         private AllActionsSet() {
-            super();
         }
 
         @Override
-        public boolean containsAll(ActionSet actions) {
-            logger.debug(String.format("containsAll(%s,%s) returns true",this, actions));
+        public boolean implies(Action action) {
             return true;
         }
 
         @Override
-        public boolean implies(ActionSet actions) {
-            return containsAll(actions);
+        public String name() {
+            return toString();
         }
 
         @Override
@@ -74,48 +69,24 @@ public interface ActionSet extends Implicable<ActionSet> {
         }
     }
 
-    class NoActionSet implements ActionSet {
-
-        private static final Logger logger = LoggerFactory.getLogger(NoActionSet.class);
-
-        private NoActionSet() {
-            super();
-        }
-
-        @Override
-        public boolean containsAll(ActionSet actions) {
-            logger.debug(String.format("containsAll(%s,%s) returns false",this, actions));
-            return false;
-        }
-
-        @Override
-        public boolean implies(ActionSet actions) {
-            return containsAll(actions);
-        }
-
-        @Override
-        public String toString() {
-            return "NO Action";
-        }
-    }
-
     ActionSet ALL_ACTIONS = new AllActionsSet();
 
-    ActionSet NO_ACTIONS = new AllActionsSet();
-
     static ActionSet parse(String name) {
-        return parse(Collections.singleton(name));
+        return parse(new HashSet(Arrays.asList(name.split(","))));
     }
 
     static ActionSet parse(Set<String> names) {
-        return names.stream().filter(n -> Actions.isAllActions(n)).findFirst().map(x -> ALL_ACTIONS).orElseGet(() -> {
-            if(names.isEmpty()) {
-                return NO_ACTIONS;
-            } else {
-                return new ActionSetCollection(names);
-            }
-        });
+        return names.stream().filter(n -> isAllActions(n)).findFirst().map(x -> ALL_ACTIONS).orElseGet(() -> new ActionSetCollection(names));
     }
+
+    static boolean isAllActions(String action) {
+        return "*".equals(action);
+    }
+
+    static ActionSet from(Action... actions) {
+        return new ActionSetCollection(Stream.of(actions).map(a -> a.name()).collect(Collectors.toSet()));
+    }
+
 }
 
 

@@ -34,7 +34,7 @@ public class ConfigTest {
 
         PolicyConfig config = new PolicyConfig("authzn", ConfigFactory.parseString(TEST));
         AuthorizationPolicy policy = config.getPolicy();
-        assertTrue(policy.permit(ROLE.of("user").with(USER.of("fred")), new BasePermission("/blah", TestAction.WRITE)).isAllowed());
+        assertTrue(policy.permit(ROLE.of("user").with(USER.of("fred")), new TestPermission("/blah", TestAction.WRITE)).isAllowed());
     }
 
 }

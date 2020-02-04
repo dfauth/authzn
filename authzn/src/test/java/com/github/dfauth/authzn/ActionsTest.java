@@ -4,64 +4,60 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
-
+import static com.github.dfauth.authzn.ActionSet.ALL_ACTIONS;
+import static com.github.dfauth.authzn.ActionsTest.TestAction.*;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 public class ActionsTest {
 
     private static final Logger logger = LoggerFactory.getLogger(ActionsTest.class);
 
-    @Test
+    @Test(groups = {"action"})
     public void testParse() {
 
         {
-
-//            TestPermission perm = new TestPermission("/a/b/c/d/e/f", TestAction.CREATE);
-//
-//            Stream.of(TestAction.values()).forEach(v -> {
-//                assertTrue(perm.getAction().containsAll(ActionSet.parse(v.name())));
-//            });
-
-//            perm.getAction().stream().forEach(v -> {
-//                assertTrue(Arrays.asList(TestAction.values()).contains(v));
-//            });
+            ActionSet actionSet = ActionSet.parse("create, read, update, delete");
+            assertTrue(ALL_ACTIONS.implies(CREATE));
+            assertTrue(actionSet.implies(CREATE));
+            assertFalse(CREATE.implies(ALL_ACTIONS));
+            assertFalse(actionSet.implies(ALL_ACTIONS));
+            assertFalse(CREATE.implies(READ));
+            assertTrue(READ.implies(READ));
         }
 
         {
-//            TestPermission perm = new TestPermission("/a/b/c/d/e/f", Actions.using(TestAction.class).parse("creaTE , dElEtE"));
-//
-//            List<TestAction> actions = Arrays.asList(new TestAction[]{TestAction.DELETE, TestAction.CREATE});
-//
-//            actions.forEach(v -> {
-//                assertTrue(perm.getAction().containsAll(ActionSet.parse(v.name())));
-//            });
-
-
-//            perm.getAction().stream().forEach(v -> {
-//                assertTrue(actions.contains(v));
-//            });
+            ActionSet actionSet = ActionSet.parse("create, read, update, delete");
+            assertTrue(ALL_ACTIONS.implies(TestAction2.CREATE));
+            assertTrue(actionSet.implies(TestAction2.CREATE));
+            assertFalse(TestAction2.CREATE.implies(ALL_ACTIONS));
+            assertFalse(actionSet.implies(ALL_ACTIONS));
+            assertFalse(TestAction2.CREATE.implies(TestAction2.READ));
+            assertTrue(TestAction2.READ.implies(TestAction2.CREATE));
+            assertTrue(TestAction2.READ.implies(TestAction2.READ));
         }
 
     }
 
-    private class TestPermission extends Permission<TestAction> {
-
-        public TestPermission(String resource, TestAction action) {
-            super(resource, action);
-        }
-
-    }
-
-    private enum TestAction implements Action<TestAction> {
-        READ, CREATE, UPDATE, DELETE;
+    enum TestAction implements Action {
+        CREATE, READ, UPDATE, DELETE;
 
         @Override
-        public boolean implies(TestAction action) {
-            return action.ordinal() < ordinal();
+        public boolean implies(Action action) {
+            return this == action;
+        }
+    }
+
+    enum TestAction2 implements Action {
+        CREATE, READ, UPDATE, DELETE;
+
+        @Override
+        public boolean implies(Action action) {
+            if(action instanceof TestAction2) {
+                TestAction2 action2 = (TestAction2) action;
+                return ordinal() >= action2.ordinal();
+            }
+            return this == action;
         }
     }
 }
