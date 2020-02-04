@@ -13,7 +13,7 @@
   <groupId>com.github.dfauth.authzn</groupId>
   <artifactId>authzn-scala</artifactId>
 
-  <name>authzn</name>
+  <name>authzn-scala</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
