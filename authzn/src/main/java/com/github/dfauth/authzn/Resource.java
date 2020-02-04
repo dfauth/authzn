@@ -1,34 +1,22 @@
 package com.github.dfauth.authzn;
 
 import java.util.Iterator;
-import java.util.Optional;
-import java.util.function.Function;
 
-public class Resource<K,V> {
+public class Resource<V> {
 
-    private final String key;
-    private final Iterable<K> path;
-    protected final Optional<V> payload;
+    private final ResourcePath path;
+    protected final V payload;
 
-    public Resource(String path, Function<String, Iterable<K>> parser, V payload) {
-        this(path, parser, Optional.of(payload));
-    }
-
-    public Resource(String path, Function<String, Iterable<K>> parser, Optional<V> payload) {
-        this.key = path;
-        this.path = parser.apply(path);
+    public Resource(ResourcePath path, V payload) {
+        this.path = path;
         this.payload = payload;
     }
 
-    public Iterable<K> getIterablePath() {
+    public ResourcePath getResourcePath() {
         return path;
     }
 
-    public String getPath() {
-        return key;
-    }
-
-    public Optional<V> getPayload() {
+    public V getPayload() {
         return payload;
     }
 
@@ -45,10 +33,10 @@ public class Resource<K,V> {
 
     public boolean implies(Resource resource) {
         // one resource implies another if it can be considered a 'parent'
-        Iterator<K> parent = getIterablePath().iterator();
-        Iterator<K> child = resource.getIterablePath().iterator();
+        Iterator<String> parent = getResourcePath().getPath().iterator();
+        Iterator<String> child = resource.getResourcePath().getPath().iterator();
         while(parent.hasNext()) {
-            K k = parent.next();
+            String k = parent.next();
             if(child.hasNext()) {
                 if(!k.equals(child.next())) {
                     return false;

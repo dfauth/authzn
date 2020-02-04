@@ -4,24 +4,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Optional;
 
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
-import static com.github.dfauth.authzn.SimpleResource.parseResourceString;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 import static org.testng.AssertJUnit.assertFalse;
 
-public class ResourceHierarchyTest {
+public class ResourceNodeTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(ResourceHierarchyTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(ResourceNodeTest.class);
+
+    @Test
+    public void testBasic() {
+        ResourceNode<Directive> ROOT = new RootResourceNode();
+        ROOT.add(
+                asResource("/a")
+        );
+
+        {
+            final String path = "/a";
+            Optional<ResourceNode<Directive>> r = ROOT.find(path);
+            assertTrue(r.isPresent());
+        }
+    }
 
     @Test
     public void testIt() {
-        ResourceHierarchy<String, Directive> ROOT = new ResourceHierarchy();
+        ResourceNode<Directive> ROOT = new RootResourceNode();
         ROOT.add(
+                asResource("/"),
                 asResource("/a"),
                 asResource("/a/ab"),
                 asResource("/a/ab/abc"),
@@ -35,73 +48,83 @@ public class ResourceHierarchyTest {
                 asResource("/a/b/abe/resource7")
         );
 
-        String path = "/a/ab/abc/resource0";
-        Optional<Resource<String, Directive>> r = ROOT.findResource(parseResourceString.apply(path));
-        assertTrue(r.isPresent());
-        assertEquals(r.get().getPath(), path);
-        ResourceHierarchy<String, Directive> h = ROOT.findNearest(parseResourceString.apply(path));
-        assertNotNull(h);
+        {
+            final String path = "/a/ab/abc/resource0";
+            Optional<ResourceNode<Directive>> r = ROOT.find(path);
+            assertTrue(r.isPresent());
+//        r.map(e -> assertEquals(e.resource().iterator().next().getResourcePath().toString(), path)).orElse(fail("Oops"));
+            assertEquals(r.get().resource().iterator().next().getResourcePath().toString(), path);
+            Optional<ResourceNode<Directive>> h = ROOT.findNearest(path);
+            assertNotNull(h);
 //        assertEquals(h.getPath(), path);
-
-        path = "/a/b/abc/resourceZ";
-        r = ROOT.findResource(parseResourceString.apply(path));
-        assertFalse(r.isPresent());
-        h = ROOT.findNearest(parseResourceString.apply(path));
-        assertNotNull(h);
-        assertFalse(h.resource().isPresent());
+        }
+        {
+            final String path = "/a/b/abc/resourceZ";
+            Optional<ResourceNode<Directive>> r = ROOT.find(path);
+            assertFalse(r.isPresent());
+            Optional<ResourceNode<Directive>> h = ROOT.findNearest(path);
+            assertTrue(h.isPresent());
 //        assertEquals(h.resource().get().getPath(), path);
+        }
 
-        path = "/a/ac/abc/resource6";
-        Iterable<Directive> iterable = ROOT.findAllInPath(parseResourceString.apply(path));
-        assertNotNull(iterable);
-        Iterator<Directive> it = iterable.iterator();
-        assertTrue(it.hasNext());
-        Directive next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), path);
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), "/a");
-        assertFalse(it.hasNext());
+        {
+            final String path = "/a/ac/abc/resource6";
+            Iterable<Directive> iterable = ROOT.findAllInPath(path);
+            assertNotNull(iterable);
+            Iterator<Directive> it = iterable.iterator();
+            assertTrue(it.hasNext());
+            Directive next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), path);
+            assertTrue(it.hasNext());
+            next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), "/a");
+            assertFalse(it.hasNext());
+        }
 
-        path = "/a/ab/abc/resource0";
-        iterable = ROOT.findAllInPath(parseResourceString.apply(path));
-        assertNotNull(iterable);
-        it = iterable.iterator();
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), path);
+        Collection<Directive> iterable;
+        Iterator<Directive> it;
+        {
+            final String path = "/a/ab/abc/resource0";
+            iterable = ROOT.findAllInPath(path);
+            assertNotNull(iterable);
+            it = iterable.iterator();
+            assertTrue(it.hasNext());
+            Directive next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), path);
 
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), "/a/ab/abc");
-        assertTrue(it.hasNext());
+            assertTrue(it.hasNext());
+            next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), "/a/ab/abc");
+            assertTrue(it.hasNext());
 
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), "/a/ab");
-        assertTrue(it.hasNext());
+            assertTrue(it.hasNext());
+            next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), "/a/ab");
+            assertTrue(it.hasNext());
 
-        assertTrue(it.hasNext());
-        next = it.next();
-        assertNotNull(next);
-        assertEquals(next.getResource().getResource(), "/a");
-        assertFalse(it.hasNext());
+            assertTrue(it.hasNext());
+            next = it.next();
+            assertNotNull(next);
+            assertEquals(next.getResourcePath().toString(), "/a");
+            assertFalse(it.hasNext());
+        }
 
-        path = "/c/ab/abc/resource0";
-        iterable = ROOT.findAllInPath(parseResourceString.apply(path));
-        assertNotNull(iterable);
-        it = iterable.iterator();
-        assertFalse(it.hasNext());
-
+        {
+            final String path = "/c/ab/abc/resource0";
+            iterable = ROOT.findAllInPath(path);
+            assertNotNull(iterable);
+            it = iterable.iterator();
+            assertFalse(it.hasNext());
+        }
     }
 
     private DirectiveResource asResource(String resource) {
-        Directive directive = new Directive(ROLE.of("user"), new Permission(resource){});
+        Directive directive = new Directive(ROLE.of("user"), new ResourcePath(resource));
         return new DirectiveResource(directive);
     }
 

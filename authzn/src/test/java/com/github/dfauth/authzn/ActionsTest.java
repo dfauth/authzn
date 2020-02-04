@@ -4,59 +4,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
-
+import static com.github.dfauth.authzn.ActionSet.ALL_ACTIONS;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 public class ActionsTest {
 
     private static final Logger logger = LoggerFactory.getLogger(ActionsTest.class);
 
-    @Test
+    @Test(groups = {"action"})
     public void testParse() {
 
         {
-            TestPermission perm = new TestPermission("/a/b/c/d/e/f", Actions.using(TestAction.class).parse("*"));
-
-            Stream.of(TestAction.values()).forEach(v -> {
-                assertTrue(perm.getActions().containsAll(ActionSet.parse(v.name())));
-            });
-
-//            perm.getActions().stream().forEach(v -> {
-//                assertTrue(Arrays.asList(TestAction.values()).contains(v));
-//            });
-        }
-
-        {
-            TestPermission perm = new TestPermission("/a/b/c/d/e/f", Actions.using(TestAction.class).parse("creaTE , dElEtE"));
-
-            List<TestAction> actions = Arrays.asList(new TestAction[]{TestAction.DELETE, TestAction.CREATE});
-
-            actions.forEach(v -> {
-                assertTrue(perm.getActions().containsAll(ActionSet.parse(v.name())));
-            });
-
-
-//            perm.getActions().stream().forEach(v -> {
-//                assertTrue(actions.contains(v));
-//            });
-        }
-
-    }
-
-    private class TestPermission extends Permission {
-
-        public TestPermission(String resource, Set<Action> actions) {
-            super(resource, actions);
+            ActionSet actionSet = ActionSet.parse("create, read, update, delete");
+            assertTrue(ALL_ACTIONS.implies(TestAction.CREATE));
+            assertTrue(actionSet.implies(TestAction.CREATE));
+            assertFalse(TestAction.CREATE.implies(ALL_ACTIONS));
+            assertFalse(actionSet.implies(ALL_ACTIONS));
         }
 
     }
 
     private enum TestAction implements Action {
         CREATE, READ, UPDATE, DELETE;
+
+        @Override
+        public boolean implies(Action action) {
+            return this == action;
+        }
     }
 }

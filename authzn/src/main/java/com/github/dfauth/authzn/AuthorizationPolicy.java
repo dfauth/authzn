@@ -5,6 +5,7 @@ import com.github.dfauth.authzn.utils.StreamUtils;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import static com.github.dfauth.authzn.AuthorizationDecisionEnum.ALLOW;
 import static com.github.dfauth.authzn.AuthorizationDecisionEnum.DENY;
 import static com.github.dfauth.authzn.AuthorizationDecision.or;
 import static com.github.dfauth.authzn.utils.StreamUtils.debugLogStream;
@@ -13,37 +14,38 @@ public abstract class AuthorizationPolicy {
 
     public final AuthorizationDecision permit(Subject subject, Permission permission) {
 
-        AuthorizationDecision decision =
-               directivesFor(permission).stream().map(d ->                                                  // for every directive associated with the given permission, most specific first
-                        d.withResolver(getResourceResolver()).decisionContextFor(permission)).map( dc ->    // resolve the directive down to a decision context
-                                subject.getPrincipals().stream().peek(debugLogStream("principals")).map(p ->                                   // for each principal associated with this subject
-                                        dc.withPrincipal(p)                                                 // apply the principal to the decision context to get a authorization decision
-                                ).reduce(DENY, or)                                                         // reduce it accepting any principal allowed
-                        ).findFirst().                                                                      // the first entry has priority
-                        orElse(DENY);                                                                       // but  if none is found, deny
-        return new AuthorizationDecision(){
-            @Override
-            public boolean isAllowed() {
-                return decision.isAllowed();
-            }
-
-            @Override
-            public boolean isDenied() {
-                return decision.isDenied();
-            }
-
-            @Override
-            public <R> R run(Callable<R> callable) throws SecurityException {
-                try {
-                    return decision.run(callable);
-                } catch(SecurityException e) {
-                    throw new SecurityException(subject+" is not authorized to perform actions "+permission.getActions()+" on resource "+permission.getResource());
-                }
-            }
-        };
+//        AuthorizationDecision decision =
+//               directivesFor(permission).stream().map(d ->                                                  // for every directive associated with the given permission, most specific first
+//                        d.withResolver(getResourceResolver()).decisionContextFor(permission)).map( dc ->    // resolve the directive down to a decision context
+//                                subject.getPrincipals().stream().peek(debugLogStream("principals")).map(p ->                                   // for each principal associated with this subject
+//                                        dc.withPrincipal(p)                                                 // apply the principal to the decision context to get a authorization decision
+//                                ).reduce(DENY, or)                                                         // reduce it accepting any principal allowed
+//                        ).findFirst().                                                                      // the first entry has priority
+//                        orElse(DENY);                                                                       // but  if none is found, deny
+//        return new AuthorizationDecision(){
+//            @Override
+//            public boolean isAllowed() {
+//                return decision.isAllowed();
+//            }
+//
+//            @Override
+//            public boolean isDenied() {
+//                return decision.isDenied();
+//            }
+//
+//            @Override
+//            public <R> R run(Callable<R> callable) throws SecurityException {
+//                try {
+//                    return decision.run(callable);
+//                } catch(SecurityException e) {
+//                    throw new SecurityException(subject+" is not authorized to perform actions "+permission.getAction()+" on resource "+permission.getResource());
+//                }
+//            }
+//        };
+        return ALLOW;
     }
 
-    protected abstract ResourceResolver getResourceResolver();
+//    protected abstract ResourceResolver getResourceResolver();
 
-    abstract Set<Directive> directivesFor(Permission permission);
+//    abstract Set<Directive> directivesFor(Permission permission);
 }

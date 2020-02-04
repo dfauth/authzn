@@ -13,16 +13,17 @@ public class TestUtils {
 
     static class TestPermission extends Permission {
 
-        public TestPermission(String resource, Set<Action> actions) {
-            super(resource, actions);
-        }
-
-        public TestPermission(String resource, TestAction action) {
-            super(resource, action);
+        public TestPermission(String resource, Action action) {
+            super(new ResourcePath(resource), action);
         }
     }
 
     enum TestAction implements Action {
-        READ, WRITE
+        READ, WRITE;
+
+        @Override
+        public boolean implies(Action action) {
+            return false;
+        }
     }
 }

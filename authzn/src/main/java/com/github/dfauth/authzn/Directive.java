@@ -6,32 +6,50 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Set;
 
+import static com.github.dfauth.authzn.ActionSet.ALL_ACTIONS;
 import static com.github.dfauth.authzn.AuthorizationDecisionEnum.*;
-import static com.github.dfauth.authzn.PermissionDecisionContext.NEVER;
 
 public class Directive {
 
     private static final Logger logger = LoggerFactory.getLogger(Directive.class);
 
     private final Set<Principal> principals;
-    private final Permission permission;
+    private final ResourcePath resource;
+    private final ActionSet actionSet;
     private final AuthorizationDecision decision;
 
-    public Directive(Principal principal, Permission permission) {
-        this(Collections.singleton(principal), permission, ALLOW);
+    public Directive(Principal principal) {
+        this(Collections.singleton(principal), ResourcePath.root(), ALL_ACTIONS);
     }
 
-    public Directive(Principal principal, Permission permission, String action) {
-        this(Collections.singleton(principal), permission, AuthorizationDecisionEnum.valueOf(action));
+    public Directive(Set<Principal> principals) {
+        this(principals, ResourcePath.root(), ALL_ACTIONS);
     }
 
-    public Directive(Set<Principal> principals, Permission permission) {
-        this(principals, permission, ALLOW);
+    public Directive(Principal principal, ResourcePath resource) {
+        this(Collections.singleton(principal), resource, ALL_ACTIONS);
+    }
+
+    public Directive(Set<Principal> principals, ResourcePath resource) {
+        this(principals, resource, ALL_ACTIONS);
+    }
+
+    public Directive(Principal principal, ResourcePath resource, ActionSet actionSet) {
+        this(Collections.singleton(principal), resource, actionSet, ALLOW);
+    }
+
+    public Directive(Principal principal, ResourcePath resource, ActionSet actionSet, String action) {
+        this(Collections.singleton(principal), resource, actionSet, AuthorizationDecisionEnum.valueOf(action));
+    }
+
+    public Directive(Set<Principal> principals, ResourcePath resource, ActionSet actionSet) {
+        this(principals, resource, actionSet, ALLOW);
     }
     
-    public Directive(Set<Principal> principals, Permission permission, AuthorizationDecision authznAction) {
+    public Directive(Set<Principal> principals, ResourcePath resource, ActionSet actionSet, AuthorizationDecision authznAction) {
         this.principals = principals;
-        this.permission = permission;
+        this.resource = resource;
+        this.actionSet = actionSet;
         this.decision = authznAction;
     }
 
@@ -43,43 +61,43 @@ public class Directive {
         return decision;
     }
 
-    public Permission getPermission() {
-        return permission;
+    public ResourcePath getResourcePath() {
+        return resource;
     }
 
     @Override
     public String toString() {
-        return String.format("Directive(%s,%s,%s)",principals, permission, decision);
+        return String.format("Directive(%s,%s,%s,%s)",principals, resource, actionSet, decision);
     }
 
-    public DirectiveContext withResolver(ResourceResolver resolver) {
-        return new DirectiveContext() {
-            @Override
-            public PermissionDecisionContext decisionContextFor(Permission permission) {
-                if(Directive.this.permission.implies(permission, resolver)) {
-                    PermissionDecisionContext result = new PermissionDecisionContextImpl(this);
-                    logger.debug(String.format("decisionContextFor: %s on permission %s returns ",this, permission, result));
-                    return result;
-                } else {
-                    logger.debug(String.format("decisionContextFor: %s on permission %s returns NEVER",this, permission));
-                    return NEVER;
-                }
-            }
-
-            @Override
-            public AuthorizationDecision forPrincipal(Principal p) {
-                return principals.contains(p) ? ALLOW : DENY;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("DirectiveContext(%s)",Directive.this);
-            }
-        };
-    }
+//    public DirectiveContext withResolver(ResourceResolver resolver) {
+//        return new DirectiveContext() {
+//            @Override
+//            public PermissionDecisionContext decisionContextFor(ResourcePath resource) {
+//                if(Directive.this.resource.implies(Directive.this.resource, resolver)) {
+//                    PermissionDecisionContext result = new PermissionDecisionContextImpl(this);
+//                    logger.debug(String.format("decisionContextFor: %s on permission %s returns ",this, Directive.this.resource, result));
+//                    return result;
+//                } else {
+//                    logger.debug(String.format("decisionContextFor: %s on permission %s returns NEVER",this, Directive.this.resource));
+//                    return NEVER;
+//                }
+//            }
+//
+//            @Override
+//            public AuthorizationDecision forPrincipal(Principal p) {
+//                return principals.contains(p) ? ALLOW : DENY;
+//            }
+//
+//            @Override
+//            public String toString() {
+//                return String.format("DirectiveContext(%s)",Directive.this);
+//            }
+//        };
+//    }
 
     interface DirectiveContext {
-        PermissionDecisionContext decisionContextFor(Permission permission);
+        PermissionDecisionContext decisionContextFor(ResourcePath resource);
 
         AuthorizationDecision forPrincipal(Principal p);
     }
@@ -91,15 +109,20 @@ public class Directive {
     public static class Builder {
 
         private Set<Principal> principals;
-        private Permission permission;
+        private ResourcePath resource;
         private AuthorizationDecision decision = AuthorizationDecisionEnum.ALLOW;
+        private ActionSet actionSet;
 
         public void withPrincipals(Set<Principal> principals) {
             this.principals = principals;
         }
 
-        public void withPermission(Permission permission) {
-            this.permission = permission;
+        public void withResource(ResourcePath resource) {
+            this.resource = resource;
+        }
+
+        public void withActionSet(ActionSet actionSet) {
+            this.actionSet = actionSet;
         }
 
         public void withAuthorizationDecision(AuthorizationDecision decision) {
@@ -107,7 +130,7 @@ public class Directive {
         }
 
         public Directive build() {
-            return new Directive(principals, permission, decision);
+            return new Directive(principals, resource, actionSet, decision);
         }
     }
 }
