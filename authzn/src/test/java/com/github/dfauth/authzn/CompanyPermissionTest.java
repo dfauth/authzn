@@ -1,12 +1,14 @@
 package com.github.dfauth.authzn;
 
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import static com.github.dfauth.authzn.Assertions.assertAllowed;
-import static com.github.dfauth.authzn.Assertions.assertDenied;
+import static com.github.dfauth.authzn.Assertions.*;
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.authzn.PrincipalType.USER;
 
@@ -58,8 +60,8 @@ public class CompanyPermissionTest {
         // any admin working for a company can view its accounts accounts
         directives.add(new Directive(admin, accounts, ActionSet.from(AccountAction.READ)));
 
-        // any accountant working for a company can read and write its accounts accounts
-        directives.add(new Directive(accountant, accounts, ActionSet.from(AccountAction.WRITE, AccountAction.READ)));
+        // any accountant working for a company can read and write and close its accounts
+        directives.add(new Directive(accountant, accounts, ActionSet.from(AccountAction.WRITE, AccountAction.READ, AccountAction.CLOSE)));
 
         // permissions
         Permission bedrockCompany = new CompanyPermission("bedrockResources");
@@ -91,7 +93,52 @@ public class CompanyPermissionTest {
         assertDenied(policy.permit(barneySubject, readAccounts, bedrockCompany)); // barney is an accountant, but he cannot read accounts on another company
         assertDenied(policy.permit(barneySubject, writeAccounts, bedrockCompany)); // barney is an accountant, but he cannot write accounts on another company
 
+        {
+            // custom logic implemented in allows() method of Permission object
+            // eg. cant close an account with non-zero balance
+            Account account = new Account("a123456", BigDecimal.TEN);
+            try {
+                policy.permit(fredSubject, new AccountPermission(account, AccountAction.CLOSE)).run(() -> {
+                    fail("shouldnt run");
+                    return null;
+                });
+            } catch (SecurityException e) {
+                // expected
+                logger.error(e.getMessage(), e);
+            }
+        }
 
+        // try again with a zero balance
+        {
+            // custom logic implemented in allows() method of Permission object
+            // eg. can close an account with zero balance
+            Account account = new Account("a123456", BigDecimal.ZERO);
+            try {
+                policy.permit(fredSubject, new AccountPermission(account, AccountAction.CLOSE)).run(() -> {
+                    // expected
+                    return null;
+                });
+            } catch (SecurityException e) {
+                logger.error(e.getMessage(), e);
+                Assert.fail("failed:"+e.getMessage());
+            }
+        }
+
+        {
+            // custom logic implemented in allows() method of Permission object
+            // eg. but yuo can read an account with non-zero balance
+            Account account = new Account("a123456", BigDecimal.TEN);
+            try {
+                policy.permit(fredSubject, new AccountPermission(account, AccountAction.READ)).run(() -> {
+                    // expected
+                    return null;
+                });
+            } catch (SecurityException e) {
+                // expected
+                logger.error(e.getMessage(), e);
+                Assert.fail("failed:"+e.getMessage());
+            }
+        }
     }
 
     static class CompanyPermission extends Permission {
@@ -102,15 +149,34 @@ public class CompanyPermissionTest {
 
     }
 
+    static class Account {
+        private String accountId;
+        private BigDecimal balance;
+
+        Account(String accountId, BigDecimal balance) {
+            this.accountId = accountId;
+            this.balance = balance;
+        }
+    }
+
     static class AccountPermission extends Permission {
+
+        private final Optional<Account> account;
 
         public AccountPermission(ResourcePath path, AccountAction action) {
             super(path, action);
+            account = Optional.empty();
+        }
+
+        public AccountPermission(Account account, AccountAction action) {
+            super(new ResourcePath("/accounts/"+account.accountId), action);
+            this.account = Optional.of(account);
         }
 
         @Override
         public boolean allows(AuthorizationDecision decision) {
-            return super.allows(decision);
+            // cant close an account with non-zero balance
+            return account.map(a -> !AccountPermission.this.action.equals(Optional.of(AccountAction.CLOSE)) || a.balance.equals(BigDecimal.ZERO)).orElse(true);
         }
     }
 

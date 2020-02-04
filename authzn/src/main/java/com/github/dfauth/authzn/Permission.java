@@ -9,8 +9,8 @@ public abstract class Permission {
 
     private static final Logger logger = LoggerFactory.getLogger(Permission.class);
 
-    private final ResourcePath resource;
-    private final Optional<Action> action;
+    protected final ResourcePath resource;
+    protected final Optional<Action> action;
     
 
     public Permission() {

@@ -14,7 +14,7 @@ import static org.testng.Assert.assertTrue;
 
 public class Assertions {
 
-    private static final Logger logger = LoggerFactory.getLogger(Assertions.class);
+    public static final Logger logger = LoggerFactory.getLogger(Assertions.class);
 
     public static void assertAllowed(AuthorizationDecision decision) {
         org.testng.Assert.assertTrue(decision.isAllowed());
