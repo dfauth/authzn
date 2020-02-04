@@ -11,7 +11,7 @@ public class ResourcePath {
     private final Iterable<String> path;
 
     public static Iterable<String> parse(String path) {
-        return Stream.of(path.split("/")).filter(e -> !"".equals(e)).collect(Collectors.toSet());
+        return Stream.of(path.split("/")).filter(e -> !"".equals(e)).collect(Collectors.toList());
     }
 
     public ResourcePath(String path) {

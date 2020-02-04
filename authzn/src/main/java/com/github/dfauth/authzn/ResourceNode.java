@@ -16,12 +16,11 @@ public abstract class ResourceNode<V> {
     protected Map<String, ResourceNode<V>> children = new HashMap<>();
     protected BiConsumer<Iterator<String>, ResourceNode<V>> addingConsumer(Resource resource) {
         return  (i,n) -> {
-            BiConsumer<Iterator<String>, ResourceNode<V>> c = addingConsumer(resource);
             if(i.hasNext()) {
                 String k = i.next();
                 ResourceNode node = new ResourceNodeImpl(k);
                 n.children.put(k, node);
-                node.findNearest(i, c);
+                node.findNearest(i, (BiConsumer)this);
             } else {
                 this.resource.add(resource);
             }
@@ -29,7 +28,8 @@ public abstract class ResourceNode<V> {
     }
 
     public ResourceNode<V> add(Resource<V> resource) {
-        findNearest(resource.getResourcePath().getPath().iterator(), addingConsumer(resource));
+//        findNearest(resource.getResourcePath().getPath().iterator(), addingConsumer(resource));
+        findOrPut(resource);
         return this;
     }
 
@@ -72,13 +72,13 @@ public abstract class ResourceNode<V> {
 
     private Optional<ResourceNode<V>> find(Iterator<String> it, BiConsumer<Iterator<String>, ResourceNode<V>> consumer, Function<ResourceNode<V>, Optional<ResourceNode<V>>> f) {
         if(!it.hasNext()) {
-            consumer.accept(it, this);
+//            consumer.accept(it, this);
             return Optional.of(this);
         } else {
             String key = it.next();
             return Optional.ofNullable(children.get(key)).map(e -> {
-                consumer.accept(it,this);
-                return e.find(it);
+                consumer.accept(it,e);
+                return e.find(it, consumer, f);
             }).orElseGet(() -> {
                     Optional<ResourceNode<V>> result = f.apply(this);
                     result.ifPresent(e -> consumer.accept(it, e));
@@ -97,8 +97,35 @@ public abstract class ResourceNode<V> {
 
     public Collection<V> findAllInPath(Iterable<String> path) {
         Deque<V> stack = new ArrayDeque();
-        findNearest(path.iterator(), (i, n) -> n.resource.forEach(p -> stack.push(p.payload)));
+        findNearest(path.iterator(),
+                (i, n) ->
+                        n.resource.forEach(p -> stack.push(p.payload))
+        );
         return stack;
+    }
+
+    private ResourceNode findOrPut(Resource resource) {
+        return findOrPut(resource.getResourcePath().getPath().iterator(), resource);
+    }
+
+    private ResourceNode findOrPut(Iterator<String> it, Resource resource) {
+        if(!it.hasNext()) {
+            this.resource.add(resource);
+            return this;
+        } else {
+            String key = it.next();
+            Optional<ResourceNode<V>> next = find(key);
+            return next.orElseGet(() -> {
+                ResourceNode <V> tmp;
+                if (it.hasNext()) {
+                    tmp = new ResourceNodeImpl(key);
+                } else {
+                    tmp = new ResourceNodeImpl(key, resource);
+                }
+                children.put(key, tmp);
+                return tmp;
+            }).findOrPut(it, resource);
+        }
     }
 
     public void walk(Consumer<Resource<V>> consumer) {

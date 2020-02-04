@@ -4,10 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static com.github.dfauth.authzn.Assertions.assertOptional;
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
 import static org.testng.Assert.*;
 import static org.testng.AssertJUnit.assertFalse;
@@ -18,15 +18,31 @@ public class ResourceNodeTest {
 
     @Test
     public void testBasic() {
-        ResourceNode<Directive> ROOT = new RootResourceNode();
+        ResourceNode<Integer> ROOT = new RootResourceNode();
         ROOT.add(
-                asResource("/a")
+                asResourceInt("/a", 1),
+                asResourceInt("/b", 2)
         );
 
         {
             final String path = "/a";
-            Optional<ResourceNode<Directive>> r = ROOT.find(path);
+            Optional<ResourceNode<Integer>> r = ROOT.find(path);
             assertTrue(r.isPresent());
+        }
+        {
+            final String path = "/b";
+            Optional<ResourceNode<Integer>> r = ROOT.find(path);
+            assertTrue(r.isPresent());
+        }
+        {
+            final String path = "/b/1";
+            ROOT.add((asResourceInt(path, 0)));
+            Optional<ResourceNode<Integer>> r = ROOT.find("/b");
+            assertOptional(r).withPredicate(e -> e.find("1").isPresent()).doAssert();
+            assertTrue(r.isPresent());
+            Collection<Integer> c = ROOT.findAllInPath(path);
+            assertFalse(c.isEmpty());
+            assertEquals(c, Arrays.asList(new Integer[]{0, 2}));
         }
     }
 
@@ -123,9 +139,12 @@ public class ResourceNodeTest {
         }
     }
 
+    private Resource<Integer> asResourceInt(String resource, int i) {
+        return new Resource(new ResourcePath(resource), i);
+    }
+
     private DirectiveResource asResource(String resource) {
         Directive directive = new Directive(ROLE.of("user"), new ResourcePath(resource));
         return new DirectiveResource(directive);
     }
-
 }
