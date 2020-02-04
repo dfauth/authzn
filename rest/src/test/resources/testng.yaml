@@ -1,8 +1,8 @@
-name: authzn-scala
+name: rest
 
 tests:
   - name: fred
     parameters: { }
     excludedGroups: [ ]
     classes:
-      - com.github.dfauth.authzn.AuthorizationSpec
+      - com.github.dfauth.auth.ServerSpec

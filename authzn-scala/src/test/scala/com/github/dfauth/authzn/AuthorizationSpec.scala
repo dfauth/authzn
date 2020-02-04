@@ -5,14 +5,15 @@ import com.github.dfauth.authzn.Assertions.WasRunAssertion
 import com.github.dfauth.authzn.TestUtils.TestAction._
 import com.github.dfauth.authzn.TestUtils.{TestAction, TestPermission}
 import com.typesafe.scalalogging.LazyLogging
+import org.scalatest.testng.TestNGSuite
 import org.testng.Assert
 import org.testng.annotations.Test
 
 import scala.util.{Failure, Success}
 
-class AuthorizationSpec extends LazyLogging {
+class AuthorizationSpec extends TestNGSuite with LazyLogging {
 
-  @Test
+  @Test(groups = Array("auth-scala"))
   def testIt() = {
 
     val resource: String = "/a/b/c/d"
@@ -32,7 +33,7 @@ class AuthorizationSpec extends LazyLogging {
           Assert.fail(s"expected authzn failure, received: ${a}")
         }
         case Failure(t) => {
-          Assert.assertEquals(t.getMessage, "user: fred roles: [admin, user] is not authorized to perform actions [READ] on resource /a/b/c/d/e/f/g")
+          Assert.assertEquals(t.getMessage, s"${subject} is not authorized to perform actions ${testPerm.action} on resource ${testPerm.resource}")
         }
       }
     }

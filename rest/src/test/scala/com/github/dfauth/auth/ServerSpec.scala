@@ -9,11 +9,12 @@ import com.typesafe.scalalogging.LazyLogging
 import org.testng.annotations.Test
 import io.restassured.RestAssured._
 import org.hamcrest.Matchers._
+import org.scalatest.testng.TestNGSuite
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class ServerSpec extends LazyLogging {
+class ServerSpec extends TestNGSuite with LazyLogging {
 
   val host = "localhost"
   val port = 0
