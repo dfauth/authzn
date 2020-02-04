@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public interface ActionSet extends Action {
 
@@ -68,43 +69,7 @@ public interface ActionSet extends Action {
         }
     }
 
-//    class NoActionSet implements ActionSet {
-//
-//        private NoActionSet() {
-//        }
-//
-//        @Override
-//        public boolean implies(Action action) {
-//            return false;
-//        }
-//
-//        @Override
-//        public String toString() {
-//            return "NO Action";
-//        }
-//    }
-//
-//    class AnyActionSet implements ActionSet {
-//
-//        private AnyActionSet() {
-//        }
-//
-//        @Override
-//        public boolean implies(Action action) {
-//            return true;
-//        }
-//
-//        @Override
-//        public String toString() {
-//            return "ANY Action";
-//        }
-//    }
-
     ActionSet ALL_ACTIONS = new AllActionsSet();
-
-//    ActionSet NO_ACTIONS = new NoActionSet();
-
-//    ActionSet ANY_ACTIONS = new AnyActionSet();
 
     static ActionSet parse(String name) {
         return parse(new HashSet(Arrays.asList(name.split(","))));
@@ -117,6 +82,11 @@ public interface ActionSet extends Action {
     static boolean isAllActions(String action) {
         return "*".equals(action);
     }
+
+    static ActionSet from(Action... actions) {
+        return new ActionSetCollection(Stream.of(actions).map(a -> a.name()).collect(Collectors.toSet()));
+    }
+
 }
 
 

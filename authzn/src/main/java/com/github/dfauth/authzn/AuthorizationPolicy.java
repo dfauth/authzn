@@ -1,12 +1,26 @@
 package com.github.dfauth.authzn;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.github.dfauth.authzn.AuthorizationDecisionEnum.DENY;
 
 public abstract class AuthorizationPolicy {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationPolicy.class);
+
+    public final AuthorizationDecision permit(Subject subject, Permission... permissions) {
+        return Stream.of(permissions).map(p -> permit(subject, p)).reduce((d1, d2) -> {
+            AuthorizationDecision result = d1.and(d2);
+            logger.info("d1: "+d1+" d2: "+d2+" result: "+result);
+            return result;
+        }).orElse(DENY);
+    }
 
     public final AuthorizationDecision permit(Subject subject, Permission permission) {
 
@@ -46,6 +60,11 @@ public abstract class AuthorizationPolicy {
                 } catch(SecurityException e) {
                     throw new SecurityException(subject+" is not authorized to perform actions "+permission.getAction()+" on resource "+permission.getResourcePath());
                 }
+            }
+
+            @Override
+            public String toString() {
+                return "AuthorizationDecision("+decision+")";
             }
         };
     }
