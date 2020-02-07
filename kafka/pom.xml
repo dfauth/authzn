@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.github.dfauth</groupId>
+        <artifactId>authzn</artifactId>
+        <version>0.1-SNAPSHOT</version>
+    </parent>
+
+    <groupId>com.github.dfauth.authzn</groupId>
+    <artifactId>kafka</artifactId>
+    <version>0.1-SNAPSHOT</version>
+
+    <name>kafka</name>
+
+    <properties>
+    </properties>
+
+    <!--
+      akkaStreamTyped,
+      kafkaCore,
+      kafkaReg,
+      akkaStreamsKafka,
+      kafkaAvroSerializer,
+      kafkaClient,
+      embeddedKafka,
+      jodaTime,
+      avro,
+
+val kafkaReg = "io.confluent" % "kafka-schema-registry-client" % "4.1.1"
+val kafkaAvroSerializer = "io.confluent" % "kafka-avro-serializer" % "4.1.1"
+
+    -->
+
+    <dependencies>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream-typed_2.12</artifactId>
+            <version>2.6.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream-kafka_2.12</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+        </plugins>
+    </build>
+</project>

@@ -26,7 +26,7 @@
     <dependency>
       <groupId>com.github.dfauth.authzn</groupId>
       <artifactId>authzn</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
