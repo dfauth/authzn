@@ -6,8 +6,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory, UserCtx}
 import com.github.dfauth.auth.Directives._
-import com.github.dfauth.authzn.{AuthorizationPolicyImpl, AuthorizationPolicyMonadImpl, Subject}
-import com.github.dfauth.authzn
+import com.github.dfauth.authzn.{AuthorizationPolicyMonadImpl, Subject}
 import com.github.dfauth.authzn.PrincipalType._
 import com.github.dfauth.authzn
 import com.typesafe.scalalogging.LazyLogging
