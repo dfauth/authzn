@@ -1,0 +1,11 @@
+@namespace("com.github.dfauth.authzn")
+protocol Authorization {
+
+  record Directive {
+    int id;
+    @java-class("java.util.HashSet") array<string> principals;
+    string resource;
+    @java-class("java.util.HashSet") array<string> actions;
+  }
+
+}
