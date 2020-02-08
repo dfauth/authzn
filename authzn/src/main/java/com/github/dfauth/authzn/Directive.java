@@ -78,36 +78,8 @@ public class Directive {
         return principals.contains(p);
     }
 
-//    public DirectiveContext withResolver(ResourceResolver resolver) {
-//        return new DirectiveContext() {
-//            @Override
-//            public PermissionDecisionContext decisionContextFor(ResourcePath resource) {
-//                if(Directive.this.resource.implies(Directive.this.resource, resolver)) {
-//                    PermissionDecisionContext result = new PermissionDecisionContextImpl(this);
-//                    logger.debug(String.format("decisionContextFor: %s on permission %s returns ",this, Directive.this.resource, result));
-//                    return result;
-//                } else {
-//                    logger.debug(String.format("decisionContextFor: %s on permission %s returns NEVER",this, Directive.this.resource));
-//                    return NEVER;
-//                }
-//            }
-//
-//            @Override
-//            public AuthorizationDecision forPrincipal(Principal p) {
-//                return principals.contains(p) ? ALLOW : DENY;
-//            }
-//
-//            @Override
-//            public String toString() {
-//                return String.format("DirectiveContext(%s)",Directive.this);
-//            }
-//        };
-//    }
-
-    interface DirectiveContext {
-        PermissionDecisionContext decisionContextFor(ResourcePath resource);
-
-        AuthorizationDecision forPrincipal(Principal p);
+    public ActionSet getActionSet() {
+        return actionSet;
     }
 
     public static Builder builder() {

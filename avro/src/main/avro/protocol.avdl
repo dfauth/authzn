@@ -1,11 +1,16 @@
-@namespace("com.github.dfauth.authzn")
+@namespace("com.github.dfauth.avro.authzn")
 protocol Authorization {
 
   record Directive {
     int id;
     @java-class("java.util.HashSet") array<string> principals;
     string resource;
-    @java-class("java.util.HashSet") array<string> actions;
+    union{null, string} actions;
+    Decision decision;
+  }
+
+  enum Decision {
+    ALLOW, DENY
   }
 
 }
