@@ -1,6 +1,5 @@
 package com.github.dfauth.authzn;
 
-import com.github.dfauth.jwt.KeyPairFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
@@ -10,7 +9,7 @@ public class TestCase {
 
     private static final Logger logger = LoggerFactory.getLogger(TestCase.class);
 
-    KeyPairFactory.createKeyPair("RSA", 2048);
+    //KeyPairFactory.createKeyPair("RSA", 2048);
 //    jwtVerifier = new JWTVerifier(testKeyPair.getPublic, issuer);
 
     @Test

@@ -35,6 +35,7 @@
     <module>jwt</module>
     <module>kafka</module>
     <module>rest</module>
+    <module>authzn-root</module>
   </modules>
 
   <dependencies>

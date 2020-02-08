@@ -11,9 +11,9 @@
   </parent>
 
   <groupId>com.github.dfauth.authzn</groupId>
-  <artifactId>authzn-module</artifactId>
+  <artifactId>authzn</artifactId>
 
-  <name>authzn</name>
+  <name>authzn-module</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
