@@ -30,6 +30,13 @@
         </dependency>
         <dependency>
             <groupId>com.github.dfauth.authzn</groupId>
+            <artifactId>authzn</artifactId>
+            <type>test-jar</type>
+            <version>0.1-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.dfauth.authzn</groupId>
             <artifactId>jwt</artifactId>
             <version>0.1-SNAPSHOT</version>
         </dependency>
@@ -46,6 +53,11 @@
         <dependency>
             <groupId>com.github.dfauth.authzn</groupId>
             <artifactId>rest</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.dfauth.authzn</groupId>
+            <artifactId>scrubber</artifactId>
             <version>0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
