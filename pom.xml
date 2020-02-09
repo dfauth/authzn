@@ -37,6 +37,7 @@
     <module>jwt</module>
     <module>kafka</module>
     <module>rest</module>
+    <module>scrubber</module>
     <module>authzn-root</module>
   </modules>
 
