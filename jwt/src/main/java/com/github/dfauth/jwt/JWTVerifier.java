@@ -1,5 +1,6 @@
 package com.github.dfauth.jwt;
 
+import com.github.dfauth.authzn.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
@@ -20,9 +21,10 @@ public class JWTVerifier {
 
     public Function<Jws<Claims>, User> asUser = claims -> {
         Set<RoleBuilder> roles = ((List<Map<String, Object>>) Optional.ofNullable(claims.getBody().get("roles", List.class)).orElse(Collections.emptyList())).stream().map(RBM).collect(Collectors.toSet());
+        String companyId = claims.getBody().get("companyId", String.class);
         String userId = claims.getBody().getSubject();
         Date expiry = claims.getBody().getExpiration();
-        return new UserBuilder().withUserId(userId).withExpiry(expiry.toInstant()).withRoles(roles).build();
+        return new UserBuilder().withUserId(userId).withCompanyId(companyId).withExpiry(expiry.toInstant()).withRoles(roles).build();
     };
 
     private final PublicKey publicKey;

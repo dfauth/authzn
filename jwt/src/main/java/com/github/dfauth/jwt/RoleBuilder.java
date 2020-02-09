@@ -1,5 +1,7 @@
 package com.github.dfauth.jwt;
 
+import com.github.dfauth.authzn.Role;
+
 public class RoleBuilder {
 
     private String roleName;

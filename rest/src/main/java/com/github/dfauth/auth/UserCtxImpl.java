@@ -2,9 +2,9 @@ package com.github.dfauth.auth;
 
 import com.github.dfauth.authzn.PrincipalType;
 import com.github.dfauth.authzn.Subject;
-import com.github.dfauth.jwt.UserCtx;
+import com.github.dfauth.authzn.UserContext;
 
-public class UserCtxImpl implements UserCtx<Subject> {
+public class UserCtxImpl implements UserContext<Subject> {
     private String token;
     private Subject payload;
 
@@ -31,5 +31,10 @@ public class UserCtxImpl implements UserCtx<Subject> {
     @Override
     public Subject payload() {
         return payload;
+    }
+
+    @Override
+    public Subject getSubject() {
+        return payload();
     }
 }

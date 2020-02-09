@@ -27,8 +27,11 @@ public class ImmutableSubject implements Subject {
     }
 
     public ImmutableSubject with(Principal p) {
+        return with(Collections.singleton(p));
+    }
+    public ImmutableSubject with(Set<Principal> p) {
         HashSet<Principal> tmp = new HashSet<>(principals);
-        tmp.add(p);
+        tmp.addAll(p);
         return of(tmp);
     }
 

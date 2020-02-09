@@ -1,5 +1,6 @@
 package com.github.dfauth.jwt;
 
+import com.github.dfauth.authzn.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
@@ -18,7 +19,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 
-import static com.github.dfauth.jwt.Role.role;
+import static com.github.dfauth.authzn.Role.role;
 
 
 public class TestCase {
@@ -41,7 +42,7 @@ public class TestCase {
 
     public void testIt(String publicKeyString, String privateKeyString, SignatureAlgorithm algo) {
 
-        User user = User.of("fred", role("test:admin"), role("test:user"));
+        User user = User.of("fred", "flintstone", role("test:admin"), role("test:user"));
 
         try {
             X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.getMimeDecoder().decode(publicKeyString));

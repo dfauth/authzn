@@ -1,7 +1,6 @@
 package com.github.dfauth.scrub.rfq;
 
-import com.github.dfauth.scrub.Company;
-import com.github.dfauth.scrub.UserModel;
+import com.github.dfauth.authzn.Company;
 import com.github.dfauth.scrub.uievents.NegotiationUIEvent;
 
 public class CreateNegotiationEvent extends RfqVisibilityModel<NegotiationUIEvent> {
@@ -18,13 +17,13 @@ public class CreateNegotiationEvent extends RfqVisibilityModel<NegotiationUIEven
     }
 
     @Override
-    public NegotiationUIEvent render(UserModel u) {
-        return new NegotiationUIEvent(extract(originator, u),
-                extract(broker, u),
-                extract(tradingCompany, u),
-                _render(volume, u),
-                _render(price, u),
-                _render(instrument, u)
+    public NegotiationUIEvent render(Company c) {
+        return new NegotiationUIEvent(extract(originator, c),
+                extract(broker, c),
+                extract(tradingCompany, c),
+                _render(volume, c),
+                _render(price, c),
+                _render(instrument, c)
         );
     }
 

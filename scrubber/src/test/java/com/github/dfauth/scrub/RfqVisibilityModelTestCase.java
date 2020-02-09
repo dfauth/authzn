@@ -1,10 +1,12 @@
 package com.github.dfauth.scrub;
 
+import com.github.dfauth.authzn.*;
 import com.github.dfauth.scrub.rfq.CreateNegotiationEvent;
 import com.github.dfauth.scrub.rfq.RfqVisibilityModel;
 import com.github.dfauth.scrub.uievents.NegotiationUIEvent;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.stream.Stream;
 
 import static com.github.dfauth.scrub.AssertionUtils.assertOptional;
@@ -19,10 +21,10 @@ public class RfqVisibilityModelTestCase {
     // the model is immutable
     private RfqVisibilityModel<NegotiationUIEvent> model = new CreateNegotiationEvent(originator, broker, tc, 10, 100, "instrumentId");
 
-    private UserContext<UserModelImpl> originatorUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator));
-    private UserContext<UserModelImpl> brokerUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker));
-    private UserContext<UserModelImpl> tcUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc));
-    private UserContext<UserModelImpl> outsiderUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC")));
+    private UserContext<UserModelImpl> originatorUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator, Collections.emptySet()));
+    private UserContext<UserModelImpl> brokerUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker, Collections.emptySet()));
+    private UserContext<UserModelImpl> tcUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc, Collections.emptySet()));
+    private UserContext<UserModelImpl> outsiderUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC"), Collections.emptySet()));
 
     @Test
     public void testFiltering() {
@@ -45,28 +47,28 @@ public class RfqVisibilityModelTestCase {
 
         // any participant can see the model
         Stream.of(new Company[]{originator, broker, tc}).forEach(p -> {
-            assertTrue(model.isVisibleTo(() -> p), "model is not visible to "+p);
+            assertTrue(model.isVisibleTo(p), "model is not visible to "+p);
         });
         // but it is not visible to anyone else
-        assertFalse(model.isVisibleTo(() -> () -> "blah"));
+        assertFalse(model.isVisibleTo(() -> "blah"));
     }
 
     @Test
     public void testScrubbing() {
-        assertTrue(model.getOriginator().isVisibleTo(() -> originator));
-        assertTrue(model.getOriginator().isVisibleTo(() -> broker));
-        assertFalse(model.getOriginator().isVisibleTo(() -> tc));
-        assertFalse(model.getOriginator().isVisibleTo(() -> () -> "blah"));
+        assertTrue(model.getOriginator().isVisibleTo(originator));
+        assertTrue(model.getOriginator().isVisibleTo(broker));
+        assertFalse(model.getOriginator().isVisibleTo(tc));
+        assertFalse(model.getOriginator().isVisibleTo(() -> "blah"));
 
-        assertTrue(model.getBroker().isVisibleTo(() -> originator));
-        assertTrue(model.getBroker().isVisibleTo(() -> broker));
-        assertTrue(model.getBroker().isVisibleTo(() -> tc));
-        assertFalse(model.getBroker().isVisibleTo(() -> () -> "blah"));
+        assertTrue(model.getBroker().isVisibleTo(originator));
+        assertTrue(model.getBroker().isVisibleTo(broker));
+        assertTrue(model.getBroker().isVisibleTo(tc));
+        assertFalse(model.getBroker().isVisibleTo(() -> "blah"));
 
-        assertFalse(model.getTradingCompany().isVisibleTo(() -> originator));
-        assertTrue(model.getTradingCompany().isVisibleTo(() -> broker));
-        assertTrue(model.getTradingCompany().isVisibleTo(() -> tc));
-        assertFalse(model.getTradingCompany().isVisibleTo(() -> () -> "blah"));
+        assertFalse(model.getTradingCompany().isVisibleTo(originator));
+        assertTrue(model.getTradingCompany().isVisibleTo(broker));
+        assertTrue(model.getTradingCompany().isVisibleTo(tc));
+        assertFalse(model.getTradingCompany().isVisibleTo(() -> "blah"));
     }
 
     @Test
@@ -74,9 +76,9 @@ public class RfqVisibilityModelTestCase {
         // outsiders cannot see the model at all
         {
             UserModelImpl userModel = outsiderUserCtx.payload();
-            assertFalse(model.isVisibleTo(userModel));
+            assertFalse(model.isVisibleTo(userModel.company()));
             // and cannot see any sensisitve fields
-            NegotiationUIEvent result = model.render(userModel);
+            NegotiationUIEvent result = model.render(userModel.company());
             assertNull(result.getOriginator());
             assertNull(result.getBroker());
             assertNull(result.getTradingCompany());
@@ -87,9 +89,9 @@ public class RfqVisibilityModelTestCase {
         // but an originator can see the model
         {
             UserModelImpl userModel = originatorUserCtx.payload();
-            assertTrue(model.isVisibleTo(userModel));
+            assertTrue(model.isVisibleTo(userModel.company()));
             // but the fields he can see may be limited
-            NegotiationUIEvent result = model.render(userModel);
+            NegotiationUIEvent result = model.render(userModel.company());
             assertNotNull(result.getOriginator());
             assertNotNull(result.getBroker());
             assertNull(result.getTradingCompany());
@@ -100,9 +102,9 @@ public class RfqVisibilityModelTestCase {
         // a broker can see the model
         {
             UserModelImpl userModel = brokerUserCtx.payload();
-            assertTrue(model.isVisibleTo(userModel));
+            assertTrue(model.isVisibleTo(userModel.company()));
             // and all the fields
-            NegotiationUIEvent result = model.render(userModel);
+            NegotiationUIEvent result = model.render(userModel.company());
             assertNotNull(result.getOriginator());
             assertNotNull(result.getBroker());
             assertNotNull(result.getTradingCompany());
@@ -113,9 +115,9 @@ public class RfqVisibilityModelTestCase {
         // and a trading company can see the model
         {
             UserModelImpl userModel = tcUserCtx.payload();
-            assertTrue(model.isVisibleTo(userModel));
+            assertTrue(model.isVisibleTo(userModel.company()));
             // but the fields he can see may be limited
-            NegotiationUIEvent result = model.render(userModel);
+            NegotiationUIEvent result = model.render(userModel.company());
             assertNull(result.getOriginator());
             assertNotNull(result.getBroker());
             assertNotNull(result.getTradingCompany());

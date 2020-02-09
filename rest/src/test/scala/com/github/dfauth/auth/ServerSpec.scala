@@ -2,9 +2,10 @@ package com.github.dfauth.auth
 
 import java.time.ZonedDateTime
 
-import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory, User}
+import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory}
 import com.github.dfauth.auth.RestEndPointServer._
-import com.github.dfauth.jwt.Role._
+import com.github.dfauth.authzn.Role._
+import com.github.dfauth.authzn.User
 import com.typesafe.scalalogging.LazyLogging
 import org.testng.annotations.Test
 import io.restassured.RestAssured._
@@ -37,8 +38,8 @@ class ServerSpec extends TestNGSuite with LazyLogging {
       val userId: String = "fred"
 
       val jwtBuilder = new JWTBuilder(this.issuer, testKeyPair.getPrivate)
-      val user = User.of(userId, role("test:admin"), role("test:user"))
-      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
+      val user = User.of(userId, "flintstone", role("test:admin"), role("test:user"))
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withClaim("companyId", "flintstone").withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
         get(endPointUrl(binding, "hello")).
@@ -67,8 +68,8 @@ class ServerSpec extends TestNGSuite with LazyLogging {
       val userId: String = "fred"
 
       val jwtBuilder = new JWTBuilder(this.issuer, testKeyPair.getPrivate)
-      val user = User.of(userId, role("test:user")) // this endpoint requires the 'admin' role
-      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
+      val user = User.of(userId, "flintstone", role("test:user")) // this endpoint requires the 'admin' role
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withClaim("companyId", "flintstone").withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
         get(endPointUrl(binding, "hello")).
@@ -96,8 +97,8 @@ class ServerSpec extends TestNGSuite with LazyLogging {
       val userId: String = "fred"
 
       val jwtBuilder = new JWTBuilder(this.issuer,testKeyPair.getPrivate)
-      val user = User.of(userId, role("test:admin"), role("test:user"))
-      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).build()
+      val user = User.of(userId, "flintstone", role("test:admin"), role("test:user"))
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withClaim("companyId", "flintstone").build()
       val token1 = token.map(_ match {
         case 'a' => 'z'
         case 'z' => 'a'

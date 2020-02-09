@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt;
+package com.github.dfauth.authzn;
 
 public class Role {
 
@@ -7,7 +7,7 @@ public class Role {
     private String rolename;
     private String systemId;
 
-    Role(String systemId, String roleName) {
+    public Role(String systemId, String roleName) {
         this.rolename = roleName;
         this.systemId = systemId;
     }

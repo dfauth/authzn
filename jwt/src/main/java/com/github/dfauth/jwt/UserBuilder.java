@@ -1,5 +1,7 @@
 package com.github.dfauth.jwt;
 
+import com.github.dfauth.authzn.User;
+
 import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -7,6 +9,7 @@ import java.util.stream.Collectors;
 
 public class UserBuilder {
     private String userId;
+    private String companyId;
     private Set<RoleBuilder> roles;
     private Instant expiry;
 
@@ -27,7 +30,7 @@ public class UserBuilder {
     }
 
     public User build() {
-        return new User(userId, roles.stream().map(r -> r.build()).collect(Collectors.toSet()), expiry);
+        return new User(userId, companyId, roles.stream().map(r -> r.build()).collect(Collectors.toSet()), expiry);
     }
 
     public UserBuilder withUserId(String userId) {
@@ -42,6 +45,11 @@ public class UserBuilder {
 
     public UserBuilder withRoles(Set<RoleBuilder> roles) {
         this.roles = roles;
+        return this;
+    }
+
+    public UserBuilder withCompanyId(String companyId) {
+        this.companyId = companyId;
         return this;
     }
 }

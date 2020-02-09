@@ -4,9 +4,9 @@ import java.security.KeyPair
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory, UserCtx}
+import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory}
 import com.github.dfauth.auth.Directives._
-import com.github.dfauth.authzn.{AuthorizationPolicyMonadImpl, Subject}
+import com.github.dfauth.authzn.{AuthorizationPolicyMonadImpl, Subject, UserContext, UserModel}
 import com.github.dfauth.authzn.PrincipalType._
 import com.github.dfauth.authzn
 import com.typesafe.scalalogging.LazyLogging
@@ -27,7 +27,7 @@ object Routes extends LazyLogging {
     path("hello") {
       get {
         authenticate(jwtVerifier) { userCtx =>
-          policy.permit(userCtx.payload(), permission) {
+          policy.permit(userCtx.getSubject, permission) {
             // call to service goes here - need to propagate userCtx
             service.call(userCtx) // this simply returns the username to be used in the response
           } match {
@@ -43,5 +43,5 @@ object Routes extends LazyLogging {
 class TestPermission() extends authzn.Permission
 
 object service {
-  def call(userCtx:UserCtx[Subject]) = userCtx.userId()
+  def call(userCtx:UserContext[_ <: UserModel]) = userCtx.userId()
 }

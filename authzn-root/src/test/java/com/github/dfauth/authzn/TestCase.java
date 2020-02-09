@@ -7,7 +7,6 @@ import com.github.dfauth.auth.jwrap.RestEndPointServer;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
-import com.github.dfauth.jwt.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
@@ -20,7 +19,7 @@ import java.security.KeyPair;
 import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
-import static com.github.dfauth.jwt.Role.role;
+import static com.github.dfauth.authzn.Role.role;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -50,7 +49,7 @@ public class TestCase {
       String userId = "fred";
 
       JWTBuilder jwtBuilder = new JWTBuilder(this.issuer, testKeyPair.getPrivate());
-      User user = User.of(userId, role("test:admin"), role("test:user"));
+      User user = User.of(userId, "flintstone", role("test:admin"), role("test:user"));
       String token = jwtBuilder.forSubject(user.getUserId()).withClaim("roles", user.getRoles()).withExpiry(ZonedDateTime.now().plusMinutes(20)).build();
       given().header("Authorization", "Bearer "+token).
               when().log().headers()

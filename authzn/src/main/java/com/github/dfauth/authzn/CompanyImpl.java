@@ -1,4 +1,4 @@
-package com.github.dfauth.scrub;
+package com.github.dfauth.authzn;
 
 public class CompanyImpl implements Company {
 
