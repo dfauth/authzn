@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
+import com.github.dfauth.authzn.ssl.SslConfig
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
@@ -21,7 +22,7 @@ object RestEndPointServer {
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.dispatcher
 
-  def endPointUrl(binding:ServerBinding, file: String, protocol:String = "http"):String = {
+  def endPointUrl(binding:ServerBinding, file: String, protocol:String = "https"):String = {
     s"${protocol}://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/${file}"
   }
 
@@ -47,10 +48,13 @@ case class RestEndPointServer(route:Route, hostname:String = "localhost", port:I
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.dispatcher
 
+  private val sslConfig = new SslConfig()
+
   def start(route:Route):Future[ServerBinding] = start(Option(route))
 
   def start(additionalRoute:Option[Route] = None):Future[ServerBinding] = {
     val r = additionalRoute.map(r => r ~ route).getOrElse(route)
+    Http().setDefaultServerHttpContext(sslConfig.getConnectionContext.asInstanceOf[akka.http.scaladsl.ConnectionContext])
     Http().bindAndHandle(r, hostname, port)
   }
 

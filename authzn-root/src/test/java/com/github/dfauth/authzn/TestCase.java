@@ -7,6 +7,7 @@ import com.github.dfauth.auth.jwrap.RestEndPointServer;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
+import io.restassured.RestAssured;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
@@ -31,6 +32,9 @@ public class TestCase {
     String host = "localhost";
     int port = 0;
     String issuer = "me";
+    static {
+     RestAssured.useRelaxedHTTPSValidation();
+    }
 
     KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
     JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic(), issuer);
@@ -53,7 +57,7 @@ public class TestCase {
       String token = jwtBuilder.forSubject(user.getUserId()).withClaim("roles", user.getRoles()).withExpiry(ZonedDateTime.now().plusMinutes(20)).build();
       given().header("Authorization", "Bearer "+token).
               when().log().headers()
-              .get(com.github.dfauth.auth.RestEndPointServer.endPointUrl(binding, "hello", "http"))
+              .get(com.github.dfauth.auth.RestEndPointServer.endPointUrl(binding, "hello", "https"))
               .then()
               .statusCode(200)
               .body("say",equalTo("hello to authenticated "+user.getUserId()));

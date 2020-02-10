@@ -7,6 +7,7 @@ import com.github.dfauth.auth.RestEndPointServer._
 import com.github.dfauth.authzn.Role._
 import com.github.dfauth.authzn.User
 import com.typesafe.scalalogging.LazyLogging
+import io.restassured.RestAssured
 import org.testng.annotations.Test
 import io.restassured.RestAssured._
 import org.hamcrest.Matchers._
@@ -20,6 +21,8 @@ class ServerSpec extends TestNGSuite with LazyLogging {
   val host = "localhost"
   val port = 0
   val issuer = "me"
+
+  RestAssured.useRelaxedHTTPSValidation()
 
   @Test(groups = Array("rest"))
   def testToken():Unit = {

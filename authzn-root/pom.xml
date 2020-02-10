@@ -60,6 +60,11 @@
             <artifactId>scrubber</artifactId>
             <version>0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.dfauth.authzn</groupId>
+            <artifactId>sslconfig</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
 

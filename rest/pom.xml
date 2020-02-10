@@ -19,11 +19,15 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <akka-http.version>10.1.11</akka-http.version>
     <akka.version>2.6.3</akka.version>
   </properties>
 
   <dependencies>
+      <dependency>
+          <groupId>org.bouncycastle</groupId>
+          <artifactId>bcprov-jdk15on</artifactId>
+          <version>1.46</version>
+      </dependency>
     <dependency>
       <groupId>com.github.dfauth.authzn</groupId>
       <artifactId>jwt</artifactId>
@@ -37,6 +41,11 @@
     <dependency>
       <groupId>com.github.dfauth.authzn</groupId>
       <artifactId>authzn-scala</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.dfauth.authzn</groupId>
+      <artifactId>sslconfig</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
