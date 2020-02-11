@@ -67,5 +67,30 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.build.directory}/generated-resources</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>com.github.dfauth.authzn</groupId>
+                <artifactId>sslconfig</artifactId>
+                <version>0.1-SNAPSHOT</version>
+                <dependencies>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>certgen</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

@@ -25,7 +25,7 @@ public class SslConfig {
     private final List<String> cipherSuites;
 
     public SslConfig() {
-        this("test.p12", "password", Collections.emptyList());
+        this("certgen.p12", "password", Collections.emptyList());
     }
 
     public SslConfig(String certFile, String password, List<String> cipherSuites) {

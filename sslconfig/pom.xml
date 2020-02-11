@@ -12,6 +12,7 @@
 
   <groupId>com.github.dfauth.authzn</groupId>
   <artifactId>sslconfig</artifactId>
+    <packaging>maven-plugin</packaging>
 
   <name>sslconfig</name>
 
@@ -19,9 +20,20 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.version>3.6.0</maven.version>
   </properties>
 
   <dependencies>
+      <dependency>
+          <groupId>org.apache.maven</groupId>
+          <artifactId>maven-plugin-api</artifactId>
+          <version>${maven.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.maven.plugin-tools</groupId>
+          <artifactId>maven-plugin-annotations</artifactId>
+          <version>${maven.version}</version>
+      </dependency>
       <dependency>
           <groupId>org.bouncycastle</groupId>
           <artifactId>bcprov-jdk15on</artifactId>
@@ -41,6 +53,15 @@
 
   <build>
     <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-plugin-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+                <goalPrefix>plugin</goalPrefix>
+                <outputDirectory>target/classes/META-INF/maven</outputDirectory>
+            </configuration>
+        </plugin>
     </plugins>
   </build>
 </project>

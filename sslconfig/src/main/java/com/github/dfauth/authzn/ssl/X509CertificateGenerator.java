@@ -48,8 +48,8 @@ import java.util.Date;
  * @author Rene Mayrhofer
  */
 public class X509CertificateGenerator {
-	/** Our log4j logger. */
-	private static Logger logger = LoggerFactory.getLogger(X509CertificateGenerator.class);
+
+	private static final Logger logger = LoggerFactory.getLogger(X509CertificateGenerator.class);
 	
 	/** This holds the certificate of the CA used to sign the new certificate. The object is created in the constructor. */
 	private X509Certificate caCert;
