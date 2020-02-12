@@ -11,14 +11,22 @@ public class AuthorizationPolicyImpl extends AuthorizationPolicy {
 
     ResourceNode<Directive> directiveHierarchy = new RootResourceNode<>();
 
+    public AuthorizationPolicyImpl() {
+        this(Collections.emptyList());
+    }
+
     public AuthorizationPolicyImpl(Directive directive) {
         this(Collections.singletonList(directive));
     }
 
     public AuthorizationPolicyImpl(List<Directive> directives) {
         directives.forEach(d -> {
-            directiveHierarchy.add(new SimpleResource<>(d.getResourcePath(), d));
+            add(d);
         });
+    }
+
+    protected void add(Directive d) {
+        directiveHierarchy.add(new SimpleResource<>(d.getResourcePath(), d));
     }
 
     @Override
