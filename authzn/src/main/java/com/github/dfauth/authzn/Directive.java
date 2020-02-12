@@ -93,20 +93,28 @@ public class Directive {
         private AuthorizationDecision decision = AuthorizationDecisionEnum.ALLOW;
         private ActionSet actionSet;
 
-        public void withPrincipals(Set<Principal> principals) {
+        public Builder withPrincipal(Principal principal) {
+            return withPrincipals(Collections.singleton(principal));
+        }
+
+        public Builder withPrincipals(Set<Principal> principals) {
             this.principals = principals;
+            return this;
         }
 
-        public void withResource(ResourcePath resource) {
+        public Builder withResource(ResourcePath resource) {
             this.resource = resource;
+            return this;
         }
 
-        public void withActionSet(ActionSet actionSet) {
+        public Builder withActionSet(ActionSet actionSet) {
             this.actionSet = actionSet;
+            return this;
         }
 
-        public void withAuthorizationDecision(AuthorizationDecision decision) {
+        public Builder withAuthorizationDecision(AuthorizationDecision decision) {
             this.decision = decision;
+            return this;
         }
 
         public Directive build() {

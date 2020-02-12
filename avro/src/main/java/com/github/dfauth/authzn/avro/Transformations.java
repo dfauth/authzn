@@ -14,12 +14,12 @@ public class Transformations {
     };
 
     public static Function<Directive, com.github.dfauth.avro.authzn.Directive> toAvro = d -> {
-        com.github.dfauth.avro.authzn.Directive avro = new com.github.dfauth.avro.authzn.Directive();
-        avro.setPrincipals(d.getPrincipals().stream().map(p -> p.getName()).collect(Collectors.toList()));
-        avro.setResource(d.getResourcePath().toString());
-        avro.setActions(d.getActionSet().toString());
-        avro.setDecision(d.getDecision().isAllowed() ? Decision.ALLOW : Decision.DENY);
-        return avro;
+        com.github.dfauth.avro.authzn.Directive.Builder builder = com.github.dfauth.avro.authzn.Directive.newBuilder();
+        builder.setPrincipals(d.getPrincipals().stream().map(p -> p.getName()).collect(Collectors.toList()))
+        .setResource(d.getResourcePath().toString())
+        .setActions(d.getActionSet().toString())
+        .setDecision(d.getDecision().isAllowed() ? Decision.ALLOW : Decision.DENY);
+        return builder.build();
     };
 
     public static Function<com.github.dfauth.avro.authzn.Directive, Directive> fromAvro = avro -> {
