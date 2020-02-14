@@ -35,7 +35,6 @@
   <modules>
     <module>authzn</module>
     <module>authzn-scala</module>
-    <module>authzn-test-utils</module>
     <module>avro</module>
     <module>jwt</module>
     <module>kafka</module>
