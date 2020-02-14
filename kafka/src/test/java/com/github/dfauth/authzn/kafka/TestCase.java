@@ -79,7 +79,6 @@ public class TestCase extends EmbeddedKafkaTest {
 
             Subscription subscription = Subscriptions.assignment(new TopicPartition(topic, 0));
             Consumer.plainSource(consumerSettings, subscription)
-                    .wireTap(r -> logger.info("WOOZ record: "+r))
                     .map(r -> r.value())
                     .map(d -> fromAvro.apply(d))
                     .to(policy.asSink()).run(materializer());
