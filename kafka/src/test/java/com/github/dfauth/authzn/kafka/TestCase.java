@@ -129,8 +129,8 @@ public class TestCase extends EmbeddedKafkaTest {
             Subscription subscription = Subscriptions.assignment(new TopicPartition(topic, 0));
             Consumer.plainSource(consumerSettings, subscription)
                     .map(r -> r.value())
-                    .map(e -> envelopeHandler.extractRecord(e))
-                    .map(d -> fromAvro.apply(d))
+                    .map(e -> envelopeHandler.extractRecordWithMetadata(e))
+                    .map(m -> m.map(fromAvro))
                     .to(policy.asSink())
                     .run(materializer());
 

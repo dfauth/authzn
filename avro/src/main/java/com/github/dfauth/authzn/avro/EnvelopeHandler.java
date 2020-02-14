@@ -1,7 +1,7 @@
 package com.github.dfauth.authzn.avro;
 
-import com.google.common.collect.ImmutableMap;
 import com.github.dfauth.avro.authzn.Envelope;
+import com.google.common.collect.ImmutableMap;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
@@ -62,5 +62,9 @@ public class EnvelopeHandler<T extends SpecificRecord> {
             logger.error(message, e);
             throw new SerializationException(message, e1);
         }
+    }
+
+    public <R> MetadataEnvelope<T> extractRecordWithMetadata(Envelope e) {
+        return new MetadataEnvelope<T>(extractRecord(e), e.getMetadata());
     }
 }
