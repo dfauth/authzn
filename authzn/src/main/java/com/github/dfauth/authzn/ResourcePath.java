@@ -1,7 +1,6 @@
 package com.github.dfauth.authzn;
 
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;

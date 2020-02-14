@@ -2,7 +2,7 @@
 protocol Authorization {
 
   record Directive {
-    int id;
+    long id;
     @java-class("java.util.HashSet") array<string> principals;
     string resource;
     union{null, string} actions;

@@ -5,9 +5,12 @@ import com.github.dfauth.authzn.AuthorizationPolicyImpl;
 import com.github.dfauth.authzn.Directive;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AuthorizationPolicySink extends AuthorizationPolicyImpl implements Subscriber<Directive> {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationPolicySink.class);
 
     private Subscription subscription;
 
@@ -28,12 +31,12 @@ public class AuthorizationPolicySink extends AuthorizationPolicyImpl implements 
     }
 
     @Override
-    public void onError(Throwable throwable) {
-
+    public void onError(Throwable t) {
+        logger.error(t.getMessage(), t);
     }
 
     @Override
     public void onComplete() {
-
+        logger.error("complete");
     }
 }

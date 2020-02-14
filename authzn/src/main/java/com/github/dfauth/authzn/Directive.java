@@ -89,9 +89,9 @@ public class Directive {
     public static class Builder {
 
         private Set<Principal> principals;
-        private ResourcePath resource;
+        private ResourcePath resource = ResourcePath.root();
         private AuthorizationDecision decision = AuthorizationDecisionEnum.ALLOW;
-        private ActionSet actionSet;
+        private ActionSet actionSet = ALL_ACTIONS;
 
         public Builder withPrincipal(Principal principal) {
             return withPrincipals(Collections.singleton(principal));

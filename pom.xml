@@ -43,6 +43,7 @@
     <module>scrubber</module>
     <module>sslconfig</module>
     <module>authzn-root</module>
+    <module>utils</module>
   </modules>
 
   <dependencies>
