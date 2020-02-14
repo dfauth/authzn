@@ -1,6 +1,13 @@
 @namespace("com.github.dfauth.avro.authzn")
 protocol Authorization {
 
+  record Envelope{
+    string id;
+    map<string> metadata;
+    string schemaRegistryTopic;
+    bytes payload;
+  }
+
   record Directive {
     long id;
     @java-class("java.util.HashSet") array<string> principals;

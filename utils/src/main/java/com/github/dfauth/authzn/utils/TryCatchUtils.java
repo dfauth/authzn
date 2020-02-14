@@ -11,9 +11,7 @@ public class TryCatchUtils {
     private static final Logger logger = LoggerFactory.getLogger(TryCatchUtils.class);
 
     public static <T> T tryCatch(Callable<T> c) {
-        return tryCatch(c, e -> {
-            throw new RuntimeException();
-        });
+        return tryCatch(c, toRuntimeExceptionHandler());
     }
 
     public static void tryCatch(Runnable r) {
@@ -24,17 +22,30 @@ public class TryCatchUtils {
         }
     }
 
-    public static <T> T tryCatchReturningNull(Callable<T> c) {
-        return tryCatch(c, e -> null);
-    }
-
-    public static <T> T tryCatch(Callable<T> c, Function<Exception, T> exceptionHandler) {
+    public static <T> T tryCatch(Callable<T> c, ExceptionHandler<T> handler) {
         try {
             return c.call();
-        } catch (Exception e) {
-            logger.error(e.getMessage(), e);
-            return exceptionHandler.apply(e);
+        } catch (Throwable t) {
+            logger.error(t.getMessage(), t);
+            return handler.handle(t);
         }
+    }
+
+    interface ExceptionHandler<T> extends Function<Throwable, T> {
+
+        default T apply(Throwable t) {
+            return handle(t);
+        }
+
+        T handle(Throwable t);
+    }
+
+    private static <T> ExceptionHandler<T> nullHandler(){
+      return t -> null;
+    }
+
+    private static <T> ExceptionHandler<T> toRuntimeExceptionHandler(){
+      return t -> {throw new RuntimeException(t);};
     }
 
 }
