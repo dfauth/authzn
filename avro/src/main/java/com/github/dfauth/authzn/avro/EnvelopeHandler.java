@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -64,7 +66,11 @@ public class EnvelopeHandler<T extends SpecificRecord> {
         }
     }
 
-    public <R> MetadataEnvelope<T> extractRecordWithMetadata(Envelope e) {
+    public MetadataEnvelope<T> extractRecordWithMetadata(Envelope e) {
         return new MetadataEnvelope<T>(extractRecord(e), e.getMetadata());
+    }
+
+    public Envelope envelope(MetadataEnvelope<T> e) {
+        return envelope(e.getPayload(), e.getMetadata());
     }
 }

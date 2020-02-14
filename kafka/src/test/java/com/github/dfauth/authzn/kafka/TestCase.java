@@ -8,6 +8,7 @@ import akka.kafka.javadsl.Consumer;
 import akka.stream.javadsl.Source;
 import com.github.dfauth.authzn.*;
 import com.github.dfauth.authzn.avro.EnvelopeHandler;
+import com.github.dfauth.authzn.avro.MetadataEnvelope;
 import com.github.dfauth.authzn.avro.SpecificRecordDeserializer;
 import com.github.dfauth.authzn.avro.SpecificRecordSerializer;
 import com.github.dfauth.avro.authzn.Envelope;
@@ -130,7 +131,7 @@ public class TestCase extends EmbeddedKafkaTest {
             Consumer.plainSource(consumerSettings, subscription)
                     .map(r -> r.value())
                     .map(e -> envelopeHandler.extractRecordWithMetadata(e))
-                    .map(m -> m.map(fromAvro))
+                    .map(m -> m.mapPayload(fromAvro))
                     .to(policy.asSink())
                     .run(materializer());
 
@@ -139,9 +140,12 @@ public class TestCase extends EmbeddedKafkaTest {
             assertDenied(policy.permit(userSubject, permission));
 
             // publish a top level directive restricting access to administrators
-            Source.single(Directive.builder().withPrincipal(ROLE.of("admin")).withResource(blahResourcePath).build())
-                    .map(e -> toAvro.apply(e))
-                    .map(d -> envelopeHandler.envelope(d, wilmaTokenMetadata))
+            Source.single(new MetadataEnvelope(
+                            Directive.builder().withPrincipal(ROLE.of("admin")).withResource(blahResourcePath).build(),
+                            wilmaTokenMetadata
+                    ))
+                    .map(e -> e.mapPayload(toAvro))
+                    .map(e -> envelopeHandler.envelope(e))
                     .to(KafkaSink.createSink(topic, p, envelopeSerializer))
                     .run(materializer());
 
@@ -150,9 +154,12 @@ public class TestCase extends EmbeddedKafkaTest {
             assertDenied(policy.permit(userSubject, permission));
 
             // publish a top level directive restricting access to administrators
-            Source.single(Directive.builder().withPrincipal(ROLE.of("user")).withResource(blahResourcePath).build())
-                    .map(e -> toAvro.apply(e))
-                    .map(d -> envelopeHandler.envelope(d, wilmaTokenMetadata))
+            Source.single(new MetadataEnvelope(
+                            Directive.builder().withPrincipal(ROLE.of("user")).withResource(blahResourcePath).build(),
+                            wilmaTokenMetadata
+                    ))
+                    .map(e -> e.mapPayload(toAvro))
+                    .map(e -> envelopeHandler.envelope(e))
                     .to(KafkaSink.createSink(topic, p, envelopeSerializer))
                     .run(materializer());
 
