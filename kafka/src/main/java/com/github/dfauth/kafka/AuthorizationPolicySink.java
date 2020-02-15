@@ -3,19 +3,22 @@ package com.github.dfauth.kafka;
 import akka.stream.javadsl.Sink;
 import com.github.dfauth.authzn.AuthorizationPolicyImpl;
 import com.github.dfauth.authzn.Directive;
-import com.github.dfauth.authzn.avro.MetadataEnvelope;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AuthorizationPolicySink extends AuthorizationPolicyImpl implements Subscriber<MetadataEnvelope<Directive>> {
+public class AuthorizationPolicySink extends AuthorizationPolicyImpl implements Subscriber<AuthenticationEnvelope<Directive>> {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationPolicySink.class);
 
     private Subscription subscription;
 
-    public Sink<MetadataEnvelope<Directive>, ?> asSink() {
+    public AuthorizationPolicySink(Directive initialDirective) {
+        add(initialDirective);
+    }
+
+    public Sink<AuthenticationEnvelope<Directive>, ?> asSink() {
         return Sink.fromSubscriber(this);
     }
 
@@ -26,9 +29,16 @@ public class AuthorizationPolicySink extends AuthorizationPolicyImpl implements 
     }
 
     @Override
-    public void onNext(MetadataEnvelope<Directive> envelope) {
-        add(envelope.getPayload());
-        subscription.request(1);
+    public void onNext(AuthenticationEnvelope<Directive> envelope) {
+        try {
+            permit(envelope.getSubject(), new PolicyPermission()).run(() -> {
+                add(envelope.payload());
+                subscription.request(1);
+                return null;
+            });
+        } catch (SecurityException e) {
+            logger.error(e.getMessage(), e);
+        }
     }
 
     @Override

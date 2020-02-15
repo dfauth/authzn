@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rej
 import akka.http.scaladsl.server.Directives._
 import com.github.dfauth.authzn.{CompanyImpl, ImmutableSubject, Subject, User, UserContext, UserContextImpl, UserModel, UserModelImpl}
 import com.github.dfauth.authzn.PrincipalType._
-import com.github.dfauth.jwt.JWTVerifier.TokenAuthentication.{Failure, Success}
 import com.github.dfauth.jwt.JWTVerifier
 import com.typesafe.scalalogging.LazyLogging
+import io.vavr.control.Try.{Failure, Success}
 
 import scala.collection.JavaConverters._
 
@@ -30,9 +30,9 @@ object Directives extends LazyLogging {
       case Some(token) => {
         verifier.authenticateToken(token, verifier.asUser) match {
           case s:Success[User] => provide(new UserContextImpl(token,
-            new UserModelImpl(s.getPayload.getUserId,
-              new CompanyImpl(s.getPayload.getCompanyId),
-              s.getPayload.getRoles)));
+            new UserModelImpl(s.get.getUserId,
+              new CompanyImpl(s.get.getCompanyId),
+              s.get.getRoles)));
           case f:Failure[User] => reject(authRejection)
         }
       }

@@ -4,6 +4,7 @@ import com.github.dfauth.authzn.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
+import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 public class JWTVerifier {
 
     private static final Logger logger = LoggerFactory.getLogger(JWTVerifier.class);
-    private static final Function<Map<String, Object>,RoleBuilder> RBM = t -> new RoleBuilder().withSystemId((String) (t.get("systemId"))).withRoleName((String) (t.get("rolename")));
+    private static final Function<Map<String, Object>, RoleBuilder> RBM = t -> new RoleBuilder().withSystemId((String) (t.get("systemId"))).withRoleName((String) (t.get("rolename")));
 
 
     public Function<Jws<Claims>, User> asUser = claims -> {
@@ -35,54 +36,31 @@ public class JWTVerifier {
         this.issuer = issuer;
     }
 
-    public <T> TokenAuthentication<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
+    public <T> Try<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
         try {
             Jws<Claims> claims = Jwts.parser()
                     .setSigningKey(publicKey)
                     .requireIssuer(issuer)
                     .parseClaimsJws(token);
-            return TokenAuthentication.Success.with(f.apply(claims));
+            return Try.success(f.apply(claims));
         } catch (RuntimeException e) {
             logger.error(e.getMessage(), e);
-            return TokenAuthentication.Failure.with(e);
+            return Try.failure(e);
         }
     }
 
-    public static class TokenAuthentication<T> {
+    public <T> TokenAuthenticator<T> tokenAuthenticator(Function<Jws<Claims>, T> f) {
+        return (String t) -> authenticateToken(t, f);
+    }
 
-        public static class Success<T> extends TokenAuthentication<T> {
+    public interface TokenAuthenticator<T> extends Function<String, Try<T>> {
 
-            private final T payload;
-
-            public Success(T payload) {
-                this.payload = payload;
-            }
-
-            public static <T> TokenAuthentication<T> with(T payload) {
-                return new Success(payload);
-            }
-
-            public T getPayload() {
-                return payload;
-            }
+        @Override
+        default Try<T> apply(String t) {
+            return parseToken(t);
         }
 
-        public static class Failure<T> extends TokenAuthentication<T> {
-
-            private final RuntimeException e;
-
-            public Failure(RuntimeException e) {
-                this.e = e;
-            }
-
-            public RuntimeException getCause() {
-                return this.e;
-            }
-
-            public static <T> TokenAuthentication<T> with(RuntimeException e) {
-                return new Failure(e);
-            }
-        }
-
+        Try<T> parseToken(String t);
     }
 }
+

@@ -13,10 +13,10 @@ import com.github.dfauth.authzn.avro.SpecificRecordDeserializer;
 import com.github.dfauth.authzn.avro.SpecificRecordSerializer;
 import com.github.dfauth.avro.authzn.Envelope;
 import com.github.dfauth.jwt.JWTBuilder;
+import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.AuthorizationPolicySink;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
-import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -31,6 +31,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.security.KeyPair;
+import java.util.Map;
 
 import static com.github.dfauth.authzn.Assertions.assertAllowed;
 import static com.github.dfauth.authzn.Assertions.assertDenied;
@@ -39,6 +40,7 @@ import static com.github.dfauth.authzn.PrincipalType.USER;
 import static com.github.dfauth.authzn.Role.role;
 import static com.github.dfauth.authzn.avro.Transformations.fromAvro;
 import static com.github.dfauth.authzn.avro.Transformations.toAvro;
+import static com.github.dfauth.authzn.kafka.AuthenticationUtils.authenticate;
 import static com.github.dfauth.authzn.utils.TryCatchUtils.tryCatch;
 import static java.lang.Thread.sleep;
 
@@ -50,11 +52,15 @@ public class TestCase extends EmbeddedKafkaTest {
     private Subject userSubject = ImmutableSubject.of(USER.of("fred"), ROLE.of("user"));
     private String topic = "authzn";
 
-    private ImmutableMap<String, String> wilmaTokenMetadata;
-    private ImmutableMap<String, String> fredTokenMetadata;
+    private Map<String, String> wilmaTokenMetadata;
+    private Map<String, String> fredTokenMetadata;
 
     private ResourcePath authorizationPolicy = new ResourcePath("/authorizationPolicy");
     private ResourcePath blahResourcePath = new ResourcePath("/blah");
+
+    private KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
+    private String issuer = "me";
+    private JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic(), issuer);
 
     private Permission permission = new TmpPermission();
 
@@ -62,12 +68,10 @@ public class TestCase extends EmbeddedKafkaTest {
     public void setUp() {
         {
             // generate an admin token for updating the directives
-            KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
-            String issuer = "me";
             JWTBuilder jwtBuilder = new JWTBuilder(issuer, testKeyPair.getPrivate());
             User adminUser = User.of("wilma", "flintstone", role("test:admin"), role("test:user"));
             String token = jwtBuilder.forSubject(adminUser.getUserId()).withClaim("roles", adminUser.getRoles()).build();
-            wilmaTokenMetadata = ImmutableMap.of("token", token);
+            wilmaTokenMetadata = MetadataEnvelope.withToken(token);
         }
         {
             // generate an user token for updating the directives
@@ -76,7 +80,7 @@ public class TestCase extends EmbeddedKafkaTest {
             JWTBuilder jwtBuilder = new JWTBuilder(issuer, testKeyPair.getPrivate());
             User adminUser = User.of("fred", "flintstone", role("test:user"));
             String token = jwtBuilder.forSubject(adminUser.getUserId()).withClaim("roles", adminUser.getRoles()).build();
-            fredTokenMetadata = ImmutableMap.of("token", token);
+            fredTokenMetadata = MetadataEnvelope.withToken(token);
         }
     }
 
@@ -85,7 +89,11 @@ public class TestCase extends EmbeddedKafkaTest {
 
         withEmbeddedKafka(p -> tryCatch(() -> {
 
-            AuthorizationPolicySink policy = new AuthorizationPolicySink();
+            // on startup, policy engine will be empty, so we prime it with an initial directive that will be checked as others
+            // are added from kafka
+            Directive defaultDirective = Directive.builder().withPrincipal(ROLE.of("admin")).build();
+
+            AuthorizationPolicySink policy = new AuthorizationPolicySink(defaultDirective);
 
             String brokerList = p.getProperty("bootstrap.servers");
 
@@ -132,11 +140,21 @@ public class TestCase extends EmbeddedKafkaTest {
                     .map(r -> r.value())
                     .map(e -> envelopeHandler.extractRecordWithMetadata(e))
                     .map(m -> m.mapPayload(fromAvro))
+                    .map(m -> authenticate(jwtVerifier, Directive.class).apply(m))
+                    .filter(_try -> {
+                        if(_try.isSuccess()) {
+                            return true;
+                        } else {
+                            logger.error("authentication failed: "+_try);
+                            return false;
+                        }
+                    })
+                    .map(_try -> _try.get())
                     .to(policy.asSink())
                     .run(materializer());
 
-            // and empty policy should not allow anything
-            assertDenied(policy.permit(adminSubject, permission));
+            // the initial directive allowed only admins
+            assertAllowed(policy.permit(adminSubject, permission));
             assertDenied(policy.permit(userSubject, permission));
 
             // publish a top level directive restricting access to administrators
@@ -169,12 +187,6 @@ public class TestCase extends EmbeddedKafkaTest {
             return null;
         }));
 
-    }
-
-    private class PolicyPermission extends Permission {
-        public PolicyPermission() {
-            super(new ResourcePath("authorizationPolicy"));
-        }
     }
 
     private class TmpPermission extends Permission {

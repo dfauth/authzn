@@ -6,6 +6,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.github.dfauth.authzn.PrincipalType.ROLE;
+import static com.github.dfauth.authzn.PrincipalType.USER;
+
 public class User {
 
     private String userId;
@@ -54,5 +57,9 @@ public class User {
 
     public String getCompanyId() {
         return companyId;
+    }
+
+    public Subject toSubject() {
+        return ImmutableSubject.of(roles.stream().map(r -> ROLE.of(r.getRolename())).collect(Collectors.toSet())).with(USER.of(userId));
     }
 }
