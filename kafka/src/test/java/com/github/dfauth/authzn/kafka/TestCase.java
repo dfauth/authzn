@@ -17,6 +17,7 @@ import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.AuthorizationPolicySink;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
+import com.github.dfauth.kafka.PolicyPermission;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -31,6 +32,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.security.KeyPair;
+import java.util.Collections;
 import java.util.Map;
 
 import static com.github.dfauth.authzn.Assertions.assertAllowed;
@@ -62,7 +64,7 @@ public class TestCase extends EmbeddedKafkaTest {
     private String issuer = "me";
     private JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic(), issuer);
 
-    private Permission permission = new TmpPermission();
+    private Permission permission = new PolicyPermission();
 
     @BeforeTest
     public void setUp() {
@@ -91,7 +93,7 @@ public class TestCase extends EmbeddedKafkaTest {
 
             // on startup, policy engine will be empty, so we prime it with an initial directive that will be checked as others
             // are added from kafka
-            Directive defaultDirective = Directive.builder().withPrincipal(ROLE.of("admin")).build();
+            Directive defaultDirective = Directive.builder().withPrincipal(ROLE.of("admin")).withResource(authorizationPolicy).build();
 
             AuthorizationPolicySink policy = new AuthorizationPolicySink(defaultDirective);
 
@@ -157,10 +159,10 @@ public class TestCase extends EmbeddedKafkaTest {
             assertAllowed(policy.permit(adminSubject, permission));
             assertDenied(policy.permit(userSubject, permission));
 
-            // publish a top level directive restricting access to administrators
+            // publish a top level directive adding access for all users, but supply empty metatdata on publishing (ie. no token in the published envelope)
             Source.single(new MetadataEnvelope(
-                            Directive.builder().withPrincipal(ROLE.of("admin")).withResource(blahResourcePath).build(),
-                            wilmaTokenMetadata
+                            Directive.builder().withPrincipal(ROLE.of("user")).withResource(authorizationPolicy).build(),
+                            Collections.emptyMap()
                     ))
                     .map(e -> e.mapPayload(toAvro))
                     .map(e -> envelopeHandler.envelope(e))
@@ -168,13 +170,31 @@ public class TestCase extends EmbeddedKafkaTest {
                     .run(materializer());
 
             sleep(1000);
+
+            // should see no change as directive was not authenticated
             assertAllowed(policy.permit(adminSubject, permission));
             assertDenied(policy.permit(userSubject, permission));
 
-            // publish a top level directive restricting access to administrators
+            // repeat, but with the token of an authenticated user, NOT having admin role
             Source.single(new MetadataEnvelope(
-                            Directive.builder().withPrincipal(ROLE.of("user")).withResource(blahResourcePath).build(),
-                            wilmaTokenMetadata
+                            Directive.builder().withPrincipal(ROLE.of("user")).withResource(authorizationPolicy).build(),
+                            fredTokenMetadata
+                    ))
+                    .map(e -> e.mapPayload(toAvro))
+                    .map(e -> envelopeHandler.envelope(e))
+                    .to(KafkaSink.createSink(topic, p, envelopeSerializer))
+                    .run(materializer());
+
+            sleep(1000);
+
+            // should see no change as directive was authenticated, but not authorized
+            assertAllowed(policy.permit(adminSubject, permission));
+            assertDenied(policy.permit(userSubject, permission));
+
+            // publish a top level directive allowing the role 'user'
+            Source.single(new MetadataEnvelope(
+                            Directive.builder().withPrincipal(ROLE.of("user")).withResource(authorizationPolicy).build(),
+                            wilmaTokenMetadata // this time we publish with the token of someone with 'admin' role
                     ))
                     .map(e -> e.mapPayload(toAvro))
                     .map(e -> envelopeHandler.envelope(e))
