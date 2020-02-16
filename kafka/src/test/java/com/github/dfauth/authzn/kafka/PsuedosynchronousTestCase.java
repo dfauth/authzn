@@ -14,8 +14,6 @@ import com.github.dfauth.authzn.avro.SpecificRecordDeserializer;
 import com.github.dfauth.authzn.avro.SpecificRecordSerializer;
 import com.github.dfauth.authzn.utils.AbstractProcessor;
 import com.github.dfauth.avro.authzn.Envelope;
-import com.github.dfauth.avro.authzn.SampleRequest;
-import com.github.dfauth.avro.authzn.SampleResponse;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
@@ -103,15 +101,9 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             String schemaRegUrl = "http://localhost:8080";
 
-            SpecificRecordSerializer<SampleRequest> serializer = _serializer(schemaRegUrl);
+            bindToKafka(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), schemaRegUrl, authTopicRequest, authTopicResponse);
 
-            SpecificRecordSerializer<Envelope> envelopeSerializer = _serializer(schemaRegUrl);
-
-            SpecificRecordDeserializer<SampleResponse> deserializer = _deserializer(schemaRegUrl);
-
-            EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> envelopeHandler = new EnvelopeHandler(serializer, deserializer);
-
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = bindToKafka(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), schemaRegUrl, authTopicRequest, authTopicResponse);
+            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = asyncProxy(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), schemaRegUrl, authTopicRequest, authTopicResponse);
 
             sleep(1000);
 
@@ -154,7 +146,79 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 .build();
     }
 
-    private Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> bindToKafka(DummyAuthenticationService svc,
+    private Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> asyncProxy(DummyAuthenticationService svc,
+                                         Properties props,
+                                         String brokerList,
+                                         String groupId,
+                                         String schemaRegUrl,
+                                         String inTopic,
+                                         String outTopic) {
+
+        Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
+
+        SpecificRecordDeserializer<Envelope> envelopeDeserializer = _deserializer(schemaRegUrl);
+        SpecificRecordSerializer<Envelope> envelopeSerializer = _serializer(schemaRegUrl);
+
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = new EnvelopeHandler(
+                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class),
+                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class));
+
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = new EnvelopeHandler(
+                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class),
+                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class));
+
+        ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)
+                .withBootstrapServers(brokerList)
+                .withGroupId(groupId)
+                .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
+
+        return i -> {
+
+            AtomicReference<String> correlationId = new AtomicReference<>();
+
+            CompletableFuture<MetadataEnvelope<LoginResponse>> f = new CompletableFuture<>();
+
+            Source.single(i)
+                    .wireTap(m -> {
+                        TemporalAmount timeout = Optional.ofNullable(m.getMetadata().get(MetadataEnvelope.TIMEOUT))
+                                .map(s -> (TemporalAmount) Duration.ofMillis(Long.parseLong(s)))
+                                .orElse(consumerConfig.getTemporal("timeout"));
+                        Timer t = new Timer();
+                        t.schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                f.completeExceptionally(new TimeoutException("timed out after " + timeout));
+                            }
+                        }, timeout.get(ChronoUnit.SECONDS) * 1000);
+
+                    })
+                    .map(m -> i.correlationId().map(k -> {
+                        correlationId.set(k);
+                        return i;
+                    }).orElseGet(() -> {
+                        correlationId.set(UUID.randomUUID().toString());
+                        return m.withCorrelationId(correlationId.get());
+                    }))
+                    .map(m -> m.mapPayload(TestTransformations.LoginRequestTransformations.toAvro))
+                    .map(e -> inEnvelopeHandler.envelope(e))
+                    .to(KafkaSink.createSink(inTopic, props, envelopeSerializer))
+                    .run(materializer());
+
+            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
+                    .map(r -> r.value())
+                    .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
+                    .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
+                    .map(m -> m.mapPayload(TestTransformations.LoginResponseTransformations.fromAvro))
+                    .to(Sink.foreach(r -> {
+                        f.complete(r);
+                    }))
+                    .run(materializer());
+
+            return f;
+        };
+    }
+
+    private void bindToKafka(DummyAuthenticationService svc,
                                          Properties props,
                                          String brokerList,
                                          String groupId,
@@ -195,50 +259,6 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 .to(KafkaSink.createSink(outTopic, props, envelopeSerializer))
                 .run(materializer());
 
-        return i -> {
-
-            AtomicReference<String> correlationId = new AtomicReference<>();
-
-            CompletableFuture<MetadataEnvelope<LoginResponse>> f = new CompletableFuture<>();
-
-            Source.single(i)
-                    .wireTap(m -> {
-                        TemporalAmount timeout = Optional.ofNullable(m.getMetadata().get(MetadataEnvelope.TIMEOUT))
-                                .map(s -> (TemporalAmount) Duration.ofMillis(Long.parseLong(s)))
-                                .orElse(consumerConfig.getTemporal("timeout"));
-                        Timer t = new Timer();
-                        t.schedule(new TimerTask() {
-                            @Override
-                            public void run() {
-                                f.completeExceptionally(new TimeoutException("timed out after "+timeout));
-                            }
-                        }, timeout.get(ChronoUnit.SECONDS)*1000);
-
-                    })
-                    .map(m -> i.correlationId().map(k -> {
-                       correlationId.set(k);
-                       return i;
-                    }).orElseGet(() -> {
-                        correlationId.set(UUID.randomUUID().toString());
-                        return m.withCorrelationId(correlationId.get());
-                    }))
-                    .map(m -> m.mapPayload(TestTransformations.LoginRequestTransformations.toAvro))
-                    .map(e -> inEnvelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(inTopic, props, envelopeSerializer))
-                    .run(materializer());
-
-            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
-                    .map(r -> r.value())
-                    .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
-                    .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
-                    .map(m -> m.mapPayload(TestTransformations.LoginResponseTransformations.fromAvro))
-                    .to(Sink.foreach(r -> {
-                        f.complete(r);
-                    }))
-                    .run(materializer());
-
-            return f;
-        };
     }
 
     private Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> asProcessor(DummyAuthenticationService svc) {
