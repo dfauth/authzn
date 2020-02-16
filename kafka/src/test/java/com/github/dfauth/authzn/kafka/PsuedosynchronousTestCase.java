@@ -8,10 +8,7 @@ import akka.stream.javadsl.Source;
 import com.github.dfauth.authzn.ImmutableSubject;
 import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.authzn.User;
-import com.github.dfauth.authzn.avro.EnvelopeHandler;
-import com.github.dfauth.authzn.avro.MetadataEnvelope;
-import com.github.dfauth.authzn.avro.SpecificRecordDeserializer;
-import com.github.dfauth.authzn.avro.SpecificRecordSerializer;
+import com.github.dfauth.authzn.avro.*;
 import com.github.dfauth.authzn.utils.AbstractProcessor;
 import com.github.dfauth.avro.authzn.Envelope;
 import com.github.dfauth.jwt.JWTBuilder;
@@ -101,9 +98,11 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             String schemaRegUrl = "http://localhost:8080";
 
-            bindToKafka(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), schemaRegUrl, authTopicRequest, authTopicResponse);
+            AvroSerialization avroSerialization = AvroSerialization.of(schemaRegClient, schemaRegUrl);
 
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = asyncProxy(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), schemaRegUrl, authTopicRequest, authTopicResponse);
+            bindToKafka(asProcessor(dummyAuthSvc), p, brokerList, "server", avroSerialization, authTopicRequest, authTopicResponse);
+
+            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = asyncProxy(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), avroSerialization, authTopicRequest, authTopicResponse);
 
             sleep(1000);
 
@@ -124,48 +123,22 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
     }
 
-    private <T> SpecificRecordSerializer<T> _serializer(String schemaRegUrl, Class<T> _ignored) {
-        return _serializer(schemaRegUrl);
-    }
-
-    private <T> SpecificRecordSerializer<T> _serializer(String schemaRegUrl) {
-        return SpecificRecordSerializer.Builder.builder()
-                .withSchemaRegistryClient(schemaRegClient)
-                .withSchemaRegistryURL(schemaRegUrl)
-                .build();
-    }
-
-    private <T> SpecificRecordDeserializer<T> _deserializer(String schemaRegUrl, Class<T> _ignored) {
-        return _deserializer(schemaRegUrl);
-    }
-
-    private <T> SpecificRecordDeserializer<T> _deserializer(String schemaRegUrl) {
-        return SpecificRecordDeserializer.Builder.builder()
-                .withSchemaRegistryClient(schemaRegClient)
-                .withSchemaRegistryURL(schemaRegUrl)
-                .build();
-    }
-
     private Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> asyncProxy(DummyAuthenticationService svc,
                                          Properties props,
                                          String brokerList,
                                          String groupId,
-                                         String schemaRegUrl,
+                                         AvroSerialization avroSerialization,
                                          String inTopic,
                                          String outTopic) {
 
         Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
 
-        SpecificRecordDeserializer<Envelope> envelopeDeserializer = _deserializer(schemaRegUrl);
-        SpecificRecordSerializer<Envelope> envelopeSerializer = _serializer(schemaRegUrl);
+        SpecificRecordDeserializer<Envelope> envelopeDeserializer = avroSerialization.deserializer(Envelope.class);
+        SpecificRecordSerializer<Envelope> envelopeSerializer = avroSerialization.serializer(Envelope.class);
 
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = new EnvelopeHandler(
-                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class),
-                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class));
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = EnvelopeHandler.of(avroSerialization,com.github.dfauth.avro.authzn.LoginRequest.class);
 
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = new EnvelopeHandler(
-                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class),
-                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class));
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
 
         ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)
                 .withBootstrapServers(brokerList)
@@ -218,33 +191,27 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
         };
     }
 
-    private void bindToKafka(DummyAuthenticationService svc,
+    private void bindToKafka(Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> processor,
                                          Properties props,
                                          String brokerList,
                                          String groupId,
-                                         String schemaRegUrl,
+                                         AvroSerialization avroSerialization,
                                          String inTopic,
                                          String outTopic) {
 
         Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
 
-        SpecificRecordDeserializer<Envelope> envelopeDeserializer = _deserializer(schemaRegUrl);
-        SpecificRecordSerializer<Envelope> envelopeSerializer = _serializer(schemaRegUrl);
+        SpecificRecordDeserializer<Envelope> envelopeDeserializer = avroSerialization.deserializer(Envelope.class);
+        SpecificRecordSerializer<Envelope> envelopeSerializer = avroSerialization.serializer(Envelope.class);
 
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = new EnvelopeHandler(
-                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class),
-                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginRequest.class));
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginRequest.class);
 
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = new EnvelopeHandler(
-                _serializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class),
-                _deserializer(schemaRegUrl, com.github.dfauth.avro.authzn.LoginResponse.class));
+        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
 
         ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)
                 .withBootstrapServers(brokerList)
                 .withGroupId(groupId)
                 .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
-
-        Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> processor = asProcessor(svc);
 
         Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
                 .map(r -> r.value())
