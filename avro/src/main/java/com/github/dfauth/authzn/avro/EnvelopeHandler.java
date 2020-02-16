@@ -9,10 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -23,6 +21,13 @@ public class EnvelopeHandler<T extends SpecificRecord> {
 
     private final SpecificRecordSerializer<T> serializer;
     private final SpecificRecordDeserializer<T> deserializer;
+
+    public static <T extends SpecificRecord> EnvelopeHandler<T> of(AvroSerialization avroSerialization, Class<T> targetClass) {
+        return new EnvelopeHandler<>(
+                avroSerialization.serializer(targetClass),
+                avroSerialization.deserializer(targetClass)
+        );
+    }
 
     public EnvelopeHandler(SpecificRecordSerializer<T> serializer, SpecificRecordDeserializer<T> deserializer) {
         this.serializer = serializer;

@@ -56,7 +56,6 @@ public class TestCase extends EmbeddedKafkaTest {
     private Map<String, String> fredTokenMetadata;
 
     private ResourcePath authorizationPolicy = new ResourcePath("/authorizationPolicy");
-    private ResourcePath blahResourcePath = new ResourcePath("/blah");
 
     private KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
     private String issuer = "me";
@@ -199,11 +198,5 @@ public class TestCase extends EmbeddedKafkaTest {
             return null;
         }));
 
-    }
-
-    private class TmpPermission extends Permission {
-        public TmpPermission() {
-            super(blahResourcePath);
-        }
     }
 }
