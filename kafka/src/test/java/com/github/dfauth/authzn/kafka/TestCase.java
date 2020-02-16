@@ -16,6 +16,7 @@ import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.AuthorizationPolicySink;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
+import com.github.dfauth.kafka.KafkaSink;
 import com.github.dfauth.kafka.PolicyPermission;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

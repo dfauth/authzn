@@ -1,8 +1,7 @@
-package com.github.dfauth.authzn.kafka;
+package com.github.dfauth.kafka;
 
 import akka.NotUsed;
 import akka.stream.javadsl.Sink;
-import com.github.dfauth.kafka.ReactiveKafkaProducer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;

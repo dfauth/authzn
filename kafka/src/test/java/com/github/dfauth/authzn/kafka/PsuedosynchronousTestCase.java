@@ -1,27 +1,19 @@
 package com.github.dfauth.authzn.kafka;
 
-import akka.kafka.ConsumerSettings;
-import akka.kafka.Subscriptions;
-import akka.kafka.javadsl.Consumer;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
 import com.github.dfauth.authzn.ImmutableSubject;
 import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.authzn.User;
-import com.github.dfauth.authzn.avro.*;
+import com.github.dfauth.authzn.avro.AvroSerialization;
+import com.github.dfauth.authzn.avro.EnvelopeHandler;
+import com.github.dfauth.authzn.avro.MetadataEnvelope;
 import com.github.dfauth.authzn.utils.AbstractProcessor;
-import com.github.dfauth.avro.authzn.Envelope;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
+import com.github.dfauth.kafka.ServiceProxy;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.reactivestreams.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,13 +21,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.security.KeyPair;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAmount;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
@@ -94,15 +81,47 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
         withEmbeddedKafka(p -> tryCatch(() -> {
 
+            ServiceProxy serviceProxy = new ServiceProxy(system(), materializer());
+
             String brokerList = p.getProperty("bootstrap.servers");
 
             String schemaRegUrl = "http://localhost:8080";
 
             AvroSerialization avroSerialization = AvroSerialization.of(schemaRegClient, schemaRegUrl);
 
-            bindToKafka(asProcessor(dummyAuthSvc), p, brokerList, "server", avroSerialization, authTopicRequest, authTopicResponse);
+            ServiceProxy.Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> template =
+                    new ServiceProxy.Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>() {
+                        @Override
+                        public ServiceProxy.EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> envelopeHandlers() {
+                            return new ServiceProxy.EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>(){
+                                @Override
+                                public EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inbound(AvroSerialization avroSerialization) {
+                                    return EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginRequest.class);
+                                }
 
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = asyncProxy(dummyAuthSvc, p, brokerList, this.getClass().getCanonicalName(), avroSerialization, authTopicRequest, authTopicResponse);
+                                @Override
+                                public EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outbound(AvroSerialization avroSerialization) {
+                                    return EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
+                                }
+                            };
+                        }
+
+                        @Override
+                        public ServiceProxy.RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> requestTransformations() {
+                            return new TestTransformations.LoginRequestTransformations();
+                        }
+
+                        @Override
+                        public ServiceProxy.ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> responseTransformations() {
+                            return new TestTransformations.LoginResponseTransformations();
+                        }
+                    };
+
+            ServiceProxy.Service service = serviceProxy.createService(asProcessor(dummyAuthSvc), p, brokerList, "client", avroSerialization, authTopicRequest, authTopicResponse);
+            service.bindToKafka(template);
+
+            ServiceProxy.Client client = serviceProxy.createClient(p, brokerList, "client", avroSerialization, authTopicRequest, authTopicResponse);
+            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> w = client.asyncProxy(template);
 
             sleep(1000);
 
@@ -120,111 +139,6 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             return null;
         }));
-
-    }
-
-    private Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> asyncProxy(DummyAuthenticationService svc,
-                                         Properties props,
-                                         String brokerList,
-                                         String groupId,
-                                         AvroSerialization avroSerialization,
-                                         String inTopic,
-                                         String outTopic) {
-
-        Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
-
-        SpecificRecordDeserializer<Envelope> envelopeDeserializer = avroSerialization.deserializer(Envelope.class);
-        SpecificRecordSerializer<Envelope> envelopeSerializer = avroSerialization.serializer(Envelope.class);
-
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = EnvelopeHandler.of(avroSerialization,com.github.dfauth.avro.authzn.LoginRequest.class);
-
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
-
-        ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)
-                .withBootstrapServers(brokerList)
-                .withGroupId(groupId)
-                .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
-
-        return i -> {
-
-            AtomicReference<String> correlationId = new AtomicReference<>();
-
-            CompletableFuture<MetadataEnvelope<LoginResponse>> f = new CompletableFuture<>();
-
-            Source.single(i)
-                    .wireTap(m -> {
-                        TemporalAmount timeout = Optional.ofNullable(m.getMetadata().get(MetadataEnvelope.TIMEOUT))
-                                .map(s -> (TemporalAmount) Duration.ofMillis(Long.parseLong(s)))
-                                .orElse(consumerConfig.getTemporal("timeout"));
-                        Timer t = new Timer();
-                        t.schedule(new TimerTask() {
-                            @Override
-                            public void run() {
-                                f.completeExceptionally(new TimeoutException("timed out after " + timeout));
-                            }
-                        }, timeout.get(ChronoUnit.SECONDS) * 1000);
-
-                    })
-                    .map(m -> i.correlationId().map(k -> {
-                        correlationId.set(k);
-                        return i;
-                    }).orElseGet(() -> {
-                        correlationId.set(UUID.randomUUID().toString());
-                        return m.withCorrelationId(correlationId.get());
-                    }))
-                    .map(m -> m.mapPayload(TestTransformations.LoginRequestTransformations.toAvro))
-                    .map(e -> inEnvelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(inTopic, props, envelopeSerializer))
-                    .run(materializer());
-
-            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
-                    .map(r -> r.value())
-                    .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
-                    .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
-                    .map(m -> m.mapPayload(TestTransformations.LoginResponseTransformations.fromAvro))
-                    .to(Sink.foreach(r -> {
-                        f.complete(r);
-                    }))
-                    .run(materializer());
-
-            return f;
-        };
-    }
-
-    private void bindToKafka(Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> processor,
-                                         Properties props,
-                                         String brokerList,
-                                         String groupId,
-                                         AvroSerialization avroSerialization,
-                                         String inTopic,
-                                         String outTopic) {
-
-        Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
-
-        SpecificRecordDeserializer<Envelope> envelopeDeserializer = avroSerialization.deserializer(Envelope.class);
-        SpecificRecordSerializer<Envelope> envelopeSerializer = avroSerialization.serializer(Envelope.class);
-
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginRequest.class);
-
-        EnvelopeHandler<com.github.dfauth.avro.authzn.LoginResponse> outEnvelopeHandler = EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
-
-        ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)
-                .withBootstrapServers(brokerList)
-                .withGroupId(groupId)
-                .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
-
-        Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
-                .map(r -> r.value())
-                .map(e -> inEnvelopeHandler.extractRecordWithMetadata(e))
-                .map(m -> m.mapPayload(TestTransformations.LoginRequestTransformations.fromAvro))
-                .to(Sink.fromSubscriber(processor))
-                .run(materializer());
-
-        Source.fromPublisher(processor)
-                .map(m -> m.mapPayload(TestTransformations.LoginResponseTransformations.toAvro))
-                .map(e -> outEnvelopeHandler.envelope(e))
-                .to(KafkaSink.createSink(outTopic, props, envelopeSerializer))
-                .run(materializer());
 
     }
 

@@ -1,11 +1,13 @@
 package com.github.dfauth.authzn.kafka;
 
+import com.github.dfauth.kafka.ServiceProxy;
+
 import java.util.function.Function;
 
 
 public class TestTransformations {
 
-    static class LoginRequestTransformations {
+    static class LoginRequestTransformations implements ServiceProxy.RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> {
 
         public static Function<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> toAvro = d ->
                 com.github.dfauth.avro.authzn.LoginRequest.newBuilder()
@@ -20,9 +22,19 @@ public class TestTransformations {
                         .withPasswordHash(avro.getPasswordHash())
                         .withRandom(avro.getRandom())
                         .build();
+
+        @Override
+        public Function<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> toAvro() {
+            return toAvro;
+        }
+
+        @Override
+        public Function<com.github.dfauth.avro.authzn.LoginRequest, LoginRequest> fromAvro() {
+            return fromAvro;
+        }
     }
 
-    public static class LoginResponseTransformations {
+    public static class LoginResponseTransformations implements ServiceProxy.ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> {
 
         public static Function<LoginResponse, com.github.dfauth.avro.authzn.LoginResponse> toAvro = d ->
                 com.github.dfauth.avro.authzn.LoginResponse.newBuilder()
@@ -31,5 +43,15 @@ public class TestTransformations {
 
         public static Function<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> fromAvro = avro ->
                 new LoginResponse(avro.getToken());
+
+        @Override
+        public Function<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> fromAvro() {
+            return fromAvro;
+        }
+
+        @Override
+        public Function<LoginResponse, com.github.dfauth.avro.authzn.LoginResponse> toAvro() {
+            return toAvro;
+        }
     }
 }
