@@ -1,4 +1,4 @@
-package com.github.dfauth.kafka;
+package com.github.dfauth.kafka.proxy;
 
 import akka.actor.ActorSystem;
 import akka.kafka.ConsumerSettings;
@@ -9,6 +9,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.github.dfauth.authzn.avro.*;
 import com.github.dfauth.avro.authzn.Envelope;
+import com.github.dfauth.kafka.KafkaSink;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.avro.specific.SpecificRecord;
@@ -178,33 +179,4 @@ public class ServiceProxy {
         }
     }
 
-    public interface Template<I,O,U extends SpecificRecord, V extends SpecificRecord> {
-
-        EnvelopeHandlers<U,V> envelopeHandlers();
-
-        RequestTransformations<I,U> requestTransformations();
-
-        ResponseTransformations<V,O> responseTransformations();
-    }
-
-    public interface ResponseTransformations<V extends SpecificRecord,O> {
-
-        Function<V,O> fromAvro();
-
-        Function<O,V> toAvro();
-    }
-
-    public interface RequestTransformations<I,U extends SpecificRecord> {
-
-        Function<I,U> toAvro();
-
-        Function<U,I> fromAvro();
-    }
-
-    public interface EnvelopeHandlers<U extends SpecificRecord, V extends SpecificRecord> {
-
-        EnvelopeHandler<U> inbound(AvroSerialization avroSerialization);
-
-        EnvelopeHandler<V> outbound(AvroSerialization avroSerialization);
-    }
 }

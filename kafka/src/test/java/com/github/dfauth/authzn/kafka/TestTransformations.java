@@ -1,13 +1,14 @@
 package com.github.dfauth.authzn.kafka;
 
-import com.github.dfauth.kafka.ServiceProxy;
+import com.github.dfauth.kafka.proxy.RequestTransformations;
+import com.github.dfauth.kafka.proxy.ResponseTransformations;
 
 import java.util.function.Function;
 
 
 public class TestTransformations {
 
-    static class LoginRequestTransformations implements ServiceProxy.RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> {
+    static class LoginRequestTransformations implements RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> {
 
         public static Function<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> toAvro = d ->
                 com.github.dfauth.avro.authzn.LoginRequest.newBuilder()
@@ -34,7 +35,7 @@ public class TestTransformations {
         }
     }
 
-    public static class LoginResponseTransformations implements ServiceProxy.ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> {
+    public static class LoginResponseTransformations implements ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> {
 
         public static Function<LoginResponse, com.github.dfauth.avro.authzn.LoginResponse> toAvro = d ->
                 com.github.dfauth.avro.authzn.LoginResponse.newBuilder()

@@ -9,7 +9,7 @@ import java.security.KeyPair;
 import static com.github.dfauth.authzn.Role.role;
 
 
-public class DummyAuthenticationService {
+public class MockAuthenticationService {
 
 
     private KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);

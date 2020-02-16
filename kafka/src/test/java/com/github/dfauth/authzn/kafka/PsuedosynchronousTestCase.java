@@ -11,7 +11,7 @@ import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
-import com.github.dfauth.kafka.ServiceProxy;
+import com.github.dfauth.kafka.proxy.*;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import org.reactivestreams.Processor;
@@ -75,7 +75,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
     @Test
     public void testIt() {
 
-        DummyAuthenticationService dummyAuthSvc = new DummyAuthenticationService();
+        MockAuthenticationService dummyAuthSvc = new MockAuthenticationService();
 
         DummyService dummySvc = new DummyService();
 
@@ -89,11 +89,11 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             AvroSerialization avroSerialization = AvroSerialization.of(schemaRegClient, schemaRegUrl);
 
-            ServiceProxy.Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> template =
-                    new ServiceProxy.Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>() {
+            Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> template =
+                    new Template<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>() {
                         @Override
-                        public ServiceProxy.EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> envelopeHandlers() {
-                            return new ServiceProxy.EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>(){
+                        public EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> envelopeHandlers() {
+                            return new EnvelopeHandlers<com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse>(){
                                 @Override
                                 public EnvelopeHandler<com.github.dfauth.avro.authzn.LoginRequest> inbound(AvroSerialization avroSerialization) {
                                     return EnvelopeHandler.of(avroSerialization, com.github.dfauth.avro.authzn.LoginRequest.class);
@@ -107,12 +107,12 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                         }
 
                         @Override
-                        public ServiceProxy.RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> requestTransformations() {
+                        public RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> requestTransformations() {
                             return new TestTransformations.LoginRequestTransformations();
                         }
 
                         @Override
-                        public ServiceProxy.ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> responseTransformations() {
+                        public ResponseTransformations<com.github.dfauth.avro.authzn.LoginResponse, LoginResponse> responseTransformations() {
                             return new TestTransformations.LoginResponseTransformations();
                         }
                     };
@@ -142,7 +142,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
     }
 
-    private Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> asProcessor(DummyAuthenticationService svc) {
+    private Processor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>> asProcessor(MockAuthenticationService svc) {
         return new AbstractProcessor<MetadataEnvelope<LoginRequest>, MetadataEnvelope<LoginResponse>>(){
 
             @Override
