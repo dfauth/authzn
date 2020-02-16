@@ -1,4 +1,4 @@
-package com.github.dfauth.authzn.avro;
+package com.github.dfauth.authzn.avro.transformations;
 
 import com.github.dfauth.authzn.*;
 import com.github.dfauth.avro.authzn.Decision;
@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class Transformations {
+public class DirectiveTransformations {
 
     public static Function<String, Principal> toPrincipal = p -> {
         String[] arr = p.split(":");

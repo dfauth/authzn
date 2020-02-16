@@ -1,4 +1,4 @@
-package com.github.dfauth.authzn.kafka;
+package com.github.dfauth.authzn.domain;
 
 public class LoginResponse {
 

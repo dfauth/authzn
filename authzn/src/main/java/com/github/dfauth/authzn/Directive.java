@@ -1,5 +1,6 @@
 package com.github.dfauth.authzn;
 
+import com.github.dfauth.authzn.common.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,7 +8,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import static com.github.dfauth.authzn.ActionSet.ALL_ACTIONS;
-import static com.github.dfauth.authzn.AuthorizationDecisionEnum.*;
+import static com.github.dfauth.authzn.AuthorizationDecisionEnum.ALLOW;
 
 public class Directive {
 

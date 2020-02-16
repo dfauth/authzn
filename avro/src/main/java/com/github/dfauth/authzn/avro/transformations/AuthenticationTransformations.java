@@ -1,14 +1,14 @@
-package com.github.dfauth.authzn.kafka;
+package com.github.dfauth.authzn.avro.transformations;
 
-import com.github.dfauth.kafka.proxy.RequestTransformations;
-import com.github.dfauth.kafka.proxy.ResponseTransformations;
+import com.github.dfauth.authzn.domain.LoginRequest;
+import com.github.dfauth.authzn.domain.LoginResponse;
 
 import java.util.function.Function;
 
 
-public class TestTransformations {
+public class AuthenticationTransformations {
 
-    static class LoginRequestTransformations implements RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> {
+    public static class LoginRequestTransformations implements RequestTransformations<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> {
 
         public static Function<LoginRequest, com.github.dfauth.avro.authzn.LoginRequest> toAvro = d ->
                 com.github.dfauth.avro.authzn.LoginRequest.newBuilder()

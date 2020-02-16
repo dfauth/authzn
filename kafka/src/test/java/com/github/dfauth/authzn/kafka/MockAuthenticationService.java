@@ -1,6 +1,8 @@
 package com.github.dfauth.authzn.kafka;
 
 import com.github.dfauth.authzn.User;
+import com.github.dfauth.authzn.domain.LoginRequest;
+import com.github.dfauth.authzn.domain.LoginResponse;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.KeyPairFactory;
 

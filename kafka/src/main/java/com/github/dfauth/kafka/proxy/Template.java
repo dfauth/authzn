@@ -1,5 +1,7 @@
 package com.github.dfauth.kafka.proxy;
 
+import com.github.dfauth.authzn.avro.transformations.RequestTransformations;
+import com.github.dfauth.authzn.avro.transformations.ResponseTransformations;
 import org.apache.avro.specific.SpecificRecord;
 
 

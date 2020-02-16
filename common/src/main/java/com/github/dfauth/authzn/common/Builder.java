@@ -1,4 +1,4 @@
-package com.github.dfauth.authzn;
+package com.github.dfauth.authzn.common;
 
 import java.util.function.Supplier;
 

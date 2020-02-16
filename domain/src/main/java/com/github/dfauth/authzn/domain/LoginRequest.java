@@ -1,6 +1,6 @@
-package com.github.dfauth.authzn.kafka;
+package com.github.dfauth.authzn.domain;
 
-import com.github.dfauth.authzn.Builder;
+import com.github.dfauth.authzn.common.Builder;
 
 public class LoginRequest {
 
@@ -30,7 +30,7 @@ public class LoginRequest {
         return random;
     }
 
-    static class _Builder implements Builder<LoginRequest> {
+    public static class _Builder implements Builder<LoginRequest> {
 
         private String random;
         private String passwordHash;
