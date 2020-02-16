@@ -45,7 +45,9 @@ public class KafkaSink<T> implements Subscriber<T> {
     public void onNext(T t) {
         this.producer
                 .map(p -> tryCatch(() -> p.send(t)))
-                .map(e -> e.thenAccept(recordMetadata -> logger.info("metadata: "+recordMetadata)));
+                .map(e -> e.thenAccept(r -> logger.info(String.format("metadata: %s %d %d"+r.topic(),
+                        r.partition(),
+                        r.offset()))));
     }
 
     @Override

@@ -82,37 +82,37 @@ public class Directive {
         return actionSet;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static _Builder builder() {
+        return new _Builder();
     }
 
-    public static class Builder {
+    public static class _Builder implements Builder {
 
         private Set<Principal> principals;
         private ResourcePath resource = ResourcePath.root();
         private AuthorizationDecision decision = AuthorizationDecisionEnum.ALLOW;
         private ActionSet actionSet = ALL_ACTIONS;
 
-        public Builder withPrincipal(Principal principal) {
+        public _Builder withPrincipal(Principal principal) {
             return withPrincipals(Collections.singleton(principal));
         }
 
-        public Builder withPrincipals(Set<Principal> principals) {
+        public _Builder withPrincipals(Set<Principal> principals) {
             this.principals = principals;
             return this;
         }
 
-        public Builder withResource(ResourcePath resource) {
+        public _Builder withResource(ResourcePath resource) {
             this.resource = resource;
             return this;
         }
 
-        public Builder withActionSet(ActionSet actionSet) {
+        public _Builder withActionSet(ActionSet actionSet) {
             this.actionSet = actionSet;
             return this;
         }
 
-        public Builder withAuthorizationDecision(AuthorizationDecision decision) {
+        public _Builder withAuthorizationDecision(AuthorizationDecision decision) {
             this.decision = decision;
             return this;
         }

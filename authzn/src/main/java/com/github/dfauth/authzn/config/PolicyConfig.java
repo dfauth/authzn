@@ -19,7 +19,7 @@ public class PolicyConfig {
 
     private BiConsumer<List<Directive>, ? super String> accumulator(Config config) {
         return (BiConsumer<List<Directive>, String>) (directives, s) -> {
-            Directive.Builder builder = Directive.builder();
+            Directive._Builder builder = Directive.builder();
             Config c = config.getConfig(String.format("directive.%s",s));
             Set<Principal> principals = optionalStringList(c, "users").stream().map(u -> USER.of(u)).collect(() -> new HashSet<Principal>(), (acc, u) -> {
                 acc.add(u);

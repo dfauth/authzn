@@ -1,7 +1,6 @@
 package com.github.dfauth.authzn.kafka;
 
 import akka.kafka.ConsumerSettings;
-import akka.kafka.ProducerSettings;
 import akka.kafka.Subscription;
 import akka.kafka.Subscriptions;
 import akka.kafka.javadsl.Consumer;
@@ -25,7 +24,6 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeTest;
@@ -124,12 +122,6 @@ public class TestCase extends EmbeddedKafkaTest {
 
 
             EnvelopeHandler<com.github.dfauth.avro.authzn.Directive> envelopeHandler = new EnvelopeHandler(serializer, deserializer);
-
-            Config producerConfig = ConfigFactory.load().getConfig("akka.kafka.producer");
-            ProducerSettings<String, com.github.dfauth.avro.authzn.Directive> producerSettings = ProducerSettings.apply(producerConfig, new StringSerializer(), serializer)
-                    .withBootstrapServers(brokerList)
-                    .withProperty("group.id", "fred");
-
 
             Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
             ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(system(), new StringDeserializer(), envelopeDeserializer)

@@ -20,4 +20,26 @@ protocol Authorization {
     ALLOW, DENY
   }
 
+  record Error {
+     string message;
+  }
+
+  record LoginRequest {
+     string username;
+     string passwordHash;
+     string random;
+  }
+
+  record LoginResponse {
+     string token;
+  }
+
+  record SampleRequest {
+     string payload;
+  }
+
+  record SampleResponse {
+     string payload;
+  }
+
 }
