@@ -10,7 +10,7 @@ public class AvroUtils {
         if(payload.getClass().isAssignableFrom(cls)) {
             return Try.success(f.apply(cls.cast(payload)));
         } else {
-            return Try.failure(new RuntimeException(((Exception)payload).getMessage()));
+            return Try.failure(new RuntimeException(((com.github.dfauth.avro.authzn.Exception)payload).getMessage()));
         }
     }
 

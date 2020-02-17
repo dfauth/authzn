@@ -169,8 +169,10 @@ public class ServiceProxy {
                         .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
                         .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
                         .map(m -> m.mapPayload(template.responseTransformations().fromAvro()))
-                        .to(Sink.foreach(r -> {
-                            f.complete(r);
+                        .to(Sink.foreach(e -> {
+                            e.getPayload()
+                                    .onSuccess(v -> f.complete(e))
+                                    .onFailure(t -> f.completeExceptionally(t));
                         }))
                         .run(serviceProxy.materializer);
 

@@ -28,6 +28,7 @@ import org.testng.annotations.Test;
 import java.security.KeyPair;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
@@ -109,18 +110,30 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             sleep(1000);
 
-            CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
-                    com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah").build()));
+            {
+                // make the authentication fail
+                CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
+                        com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah2").build()));
 
-            f.thenAccept(r -> {
-               logger.info("response: "+r);
-            });
+                // expect failure
+                try {
+                    f.get();
+                    fail("Oops. expected exception");
+                } catch (ExecutionException e) {
+                    assertEquals(e.getCause().getMessage(), "Authentication failure for user fred");
+                }
+            }
 
-            // wait on this future
-            MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> response = f.get();
-            assertNotNull(response);
-            assertTrue(response.getPayload().isSuccess());
-            response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
+            {
+                // try again, make the authentication pass
+                CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
+                        com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah").build()));
+
+                MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> response = f.get();
+                assertNotNull(response);
+                assertTrue(response.getPayload().isSuccess());
+                response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
+            }
 
             // make an unauthenticated call to the DummyService
 //            CompletableFuture<MetadataEnvelope<com.github.dfauth.authzn.kafka.SampleResponse>> f1 = dummyProxy.apply(new MetadataEnvelope(
