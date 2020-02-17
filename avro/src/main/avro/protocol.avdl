@@ -20,7 +20,7 @@ protocol Authorization {
     ALLOW, DENY
   }
 
-  record Error {
+  record Exception {
      string message;
   }
 
@@ -31,6 +31,10 @@ protocol Authorization {
   }
 
   record LoginResponse {
+     union {Exception, LoginResponseSuccess} payload;
+  }
+
+  record LoginResponseSuccess {
      string token;
   }
 
@@ -39,6 +43,10 @@ protocol Authorization {
   }
 
   record SampleResponse {
+     union {Exception, SampleResponseSuccess} payload;
+  }
+
+  record SampleResponseSuccess {
      string payload;
   }
 

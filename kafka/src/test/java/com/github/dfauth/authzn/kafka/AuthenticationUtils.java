@@ -13,7 +13,11 @@ public class AuthenticationUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationUtils.class);
 
-    public static <T> Function<MetadataEnvelope<T>, Try<AuthenticationEnvelope<T>>> authenticate(JWTVerifier verifier, Class<T> cls) {
+    public static <T> Function<MetadataEnvelope<T>, Try<AuthenticationEnvelope<T>>> authenticate(JWTVerifier verifier, Class<T> ignore) {
+        return authenticate(verifier);
+    }
+
+    public static <T> Function<MetadataEnvelope<T>, Try<AuthenticationEnvelope<T>>> authenticate(JWTVerifier verifier) {
         return m -> m.authorizationToken()
                     .map(verifier.tokenAuthenticator(verifier.asUser))
                     .map(ta -> ta.map(u -> new AuthenticationEnvelope<>(m.getPayload(), m.getMetadata(), u)))

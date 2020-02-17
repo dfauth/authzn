@@ -20,9 +20,14 @@ public class MockAuthenticationService {
 
     public LoginResponse serviceCall(LoginRequest request) {
 
-        // generate an user token for updating the directives
-        User adminUser = User.of(request.getUsername(), "flintstone", role("test:user"));
-        String token = jwtBuilder.forSubject(adminUser.getUserId()).withClaim("roles", adminUser.getRoles()).build();
-        return new LoginResponse(token);
+        if(request.getPasswordHash().equals(request.getRandom())) {
+            // generate an user token for updating the directives
+            User adminUser = User.of(request.getUsername(), "flintstone", role("test:user"));
+            String token = jwtBuilder.forSubject(adminUser.getUserId()).withClaim("roles", adminUser.getRoles()).build();
+            return new LoginResponse(token);
+        } else {
+            throw new SecurityException("Authentication failure for user "+request.getUsername());
+        }
+
     }
 }

@@ -12,6 +12,7 @@ import com.github.dfauth.avro.authzn.Envelope;
 import com.github.dfauth.kafka.KafkaSink;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import io.vavr.control.Try;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -38,42 +39,37 @@ public class ServiceProxy {
     private Properties props;
     private String brokerList;
     private AvroSerialization avroSerialization;
-    private String outTopic;
-    private String inTopic;
 
-    public ServiceProxy(ActorSystem system, Materializer materializer) {
+    public ServiceProxy(ActorSystem system, Materializer materializer, Properties props, String brokerList, AvroSerialization avroSerialization) {
         this.system = system;
         this.materializer = materializer;
-    }
-
-    public Client createClient(Properties props, String brokerList, String groupId, AvroSerialization avroSerialization, String inTopic, String outTopic) {
         this.props = props;
         this.brokerList = brokerList;
         this.avroSerialization = avroSerialization;
-        this.inTopic = inTopic;
-        this.outTopic = outTopic;
-        return new Client(this, groupId);
     }
 
-    public <I,O> ServiceProxy.Service createService(Processor<MetadataEnvelope<I>, MetadataEnvelope<O>> processor, Properties props, String brokerList, String groupId, AvroSerialization avroSerialization, String inTopic, String outTopic) {
-        this.props = props;
-        this.brokerList = brokerList;
-        this.avroSerialization = avroSerialization;
-        this.inTopic = inTopic;
-        this.outTopic = outTopic;
-        return new Service(this, groupId, processor);
+    public Client createClient(String groupId, String inTopic, String outTopic) {
+        return new Client(this, groupId, inTopic, outTopic);
+    }
+
+    public <I,O> ServiceProxy.Service createService(Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
+        return new Service(this, processor, groupId, inTopic, outTopic);
     }
 
     public static class Service<I,O> {
 
         private final String groupId;
         private final ServiceProxy serviceProxy;
-        private final Processor<MetadataEnvelope<I>, MetadataEnvelope<O>> processor;
+        private final Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor;
+        private String outTopic;
+        private String inTopic;
 
-        public Service(ServiceProxy serviceProxy, String groupId, Processor<MetadataEnvelope<I>, MetadataEnvelope<O>> processor) {
+        public Service(ServiceProxy serviceProxy, Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
             this.serviceProxy = serviceProxy;
-            this.groupId = groupId;
             this.processor = processor;
+            this.groupId = groupId;
+            this.inTopic = inTopic;
+            this.outTopic = outTopic;
         }
 
         public <U extends SpecificRecord, V extends SpecificRecord> void bindToKafka(Template<I,O,U,V> template) {
@@ -82,16 +78,16 @@ public class ServiceProxy {
             SpecificRecordDeserializer<Envelope> envelopeDeserializer = serviceProxy.avroSerialization.deserializer(Envelope.class);
             SpecificRecordSerializer<Envelope> envelopeSerializer = serviceProxy.avroSerialization.serializer(Envelope.class);
 
-            EnvelopeHandler<U> inEnvelopeHandler = template.envelopeHandlers().inbound(serviceProxy.avroSerialization); //EnvelopeHandler.of(serviceProxy.avroSerialization, com.github.dfauth.avro.authzn.LoginRequest.class);
+            EnvelopeHandler<U> inEnvelopeHandler = template.envelopeHandlers().inbound(serviceProxy.avroSerialization);
 
-            EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization); // EnvelopeHandler.of(serviceProxy.avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
+            EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization);
 
             ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(serviceProxy.system, new StringDeserializer(), envelopeDeserializer)
                     .withBootstrapServers(serviceProxy.brokerList)
                     .withGroupId(groupId)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
 
-            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(serviceProxy.inTopic, 0)))
+            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
                     .map(r -> r.value())
                     .map(e -> inEnvelopeHandler.extractRecordWithMetadata(e))
                     .map(m -> m.mapPayload(template.requestTransformations().fromAvro()))
@@ -101,7 +97,7 @@ public class ServiceProxy {
             Source.fromPublisher(processor)
                     .map(m -> m.mapPayload(template.responseTransformations().toAvro()))
                     .map(e -> outEnvelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(serviceProxy.outTopic, serviceProxy.props, envelopeSerializer))
+                    .to(KafkaSink.createSink(outTopic, serviceProxy.props, envelopeSerializer))
                     .run(serviceProxy.materializer);
 
         }
@@ -111,21 +107,25 @@ public class ServiceProxy {
 
         private final String groupId;
         private final ServiceProxy serviceProxy;
+        private String outTopic;
+        private String inTopic;
 
-        public Client(ServiceProxy serviceProxy, String groupId) {
+        public Client(ServiceProxy serviceProxy, String groupId, String inTopic, String outTopic) {
             this.serviceProxy = serviceProxy;
             this.groupId = groupId;
+            this.inTopic = inTopic;
+            this.outTopic = outTopic;
         }
 
-        public <U extends SpecificRecord, V extends SpecificRecord> Function<MetadataEnvelope<I>, CompletableFuture<MetadataEnvelope<O>>> asyncProxy(Template<I,O,U,V> template) {
+        public <U extends SpecificRecord, V extends SpecificRecord> Function<MetadataEnvelope<I>, CompletableFuture<MetadataEnvelope<Try<O>>>> asyncProxy(Template<I,O,U,V> template) {
             Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
 
             SpecificRecordDeserializer<Envelope> envelopeDeserializer = serviceProxy.avroSerialization.deserializer(Envelope.class);
             SpecificRecordSerializer<Envelope> envelopeSerializer = serviceProxy.avroSerialization.serializer(Envelope.class);
 
-            EnvelopeHandler<U> inEnvelopeHandler = template.envelopeHandlers().inbound(serviceProxy.avroSerialization); //.of(serviceProxy.avroSerialization,com.github.dfauth.avro.authzn.LoginRequest.class);
+            EnvelopeHandler<U> inEnvelopeHandler = template.envelopeHandlers().inbound(serviceProxy.avroSerialization);
 
-            EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization); //EnvelopeHandler.of(serviceProxy.avroSerialization, com.github.dfauth.avro.authzn.LoginResponse.class);
+            EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization);
 
             ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(serviceProxy.system, new StringDeserializer(), envelopeDeserializer)
                     .withBootstrapServers(serviceProxy.brokerList)
@@ -136,7 +136,7 @@ public class ServiceProxy {
 
                 AtomicReference<String> correlationId = new AtomicReference<>();
 
-                CompletableFuture<MetadataEnvelope<O>> f = new CompletableFuture<>();
+                CompletableFuture<MetadataEnvelope<Try<O>>> f = new CompletableFuture<>();
 
                 Source.single(i)
                         .wireTap(m -> {
@@ -161,10 +161,10 @@ public class ServiceProxy {
                         }))
                         .map(m -> m.mapPayload(template.requestTransformations().toAvro()))
                         .map(e -> inEnvelopeHandler.envelope(e))
-                        .to(KafkaSink.createSink(serviceProxy.inTopic, serviceProxy.props, envelopeSerializer))
+                        .to(KafkaSink.createSink(inTopic, serviceProxy.props, envelopeSerializer))
                         .run(serviceProxy.materializer);
 
-                Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(serviceProxy.outTopic, 0)))
+                Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
                         .map(r -> r.value())
                         .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
                         .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
