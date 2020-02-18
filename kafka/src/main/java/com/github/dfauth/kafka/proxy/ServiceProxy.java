@@ -138,13 +138,13 @@ public class ServiceProxy {
 
                 CompletableFuture<MetadataEnvelope<Try<O>>> f = new CompletableFuture<>();
 
+                Timer timer = new Timer();
                 Source.single(i)
                         .wireTap(m -> {
                             TemporalAmount timeout = Optional.ofNullable(m.getMetadata().get(MetadataEnvelope.TIMEOUT))
                                     .map(s -> (TemporalAmount) Duration.ofMillis(Long.parseLong(s)))
                                     .orElse(consumerConfig.getTemporal("timeout"));
-                            Timer t = new Timer();
-                            t.schedule(new TimerTask() {
+                            timer.schedule(new TimerTask() {
                                 @Override
                                 public void run() {
                                     f.completeExceptionally(new TimeoutException("timed out after " + timeout));
@@ -168,6 +168,7 @@ public class ServiceProxy {
                         .map(r -> r.value())
                         .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
                         .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
+                        .wireTap(m -> {timer.cancel();})
                         .map(m -> m.mapPayload(template.responseTransformations().fromAvro()))
                         .to(Sink.foreach(e -> {
                             e.getPayload()

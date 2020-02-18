@@ -35,7 +35,9 @@ public class SampleTransformations {
         @Override
         public Function<Try<SampleResponse>, com.github.dfauth.avro.authzn.SampleResponse> toAvro() {
             return t -> t.map(r -> com.github.dfauth.avro.authzn.SampleResponse.newBuilder()
-                    .setPayload(r)
+                    .setPayload(com.github.dfauth.avro.authzn.SampleResponseSuccess.newBuilder()
+                        .setPayload(r.getPayload())
+                        .build())
                     .build())
                     .getOrElseGet(x -> com.github.dfauth.avro.authzn.SampleResponse.newBuilder()
                             .setPayload(com.github.dfauth.avro.authzn.Exception.newBuilder()

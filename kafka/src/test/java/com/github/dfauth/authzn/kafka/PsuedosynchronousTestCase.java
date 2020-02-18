@@ -49,7 +49,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
     private String authTopicRequest = "auth-request";
     private String authTopicResponse = "auth-response";
     private String dummyTopicRequest = "dummy-request";
-    private String dummyTopicResponse = "summy-response";
+    private String dummyTopicResponse = "dummy-response";
 
     private Map<String, String> wilmaTokenMetadata;
     private Map<String, String> fredTokenMetadata;
@@ -70,8 +70,6 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
         }
         {
             // generate an user token for updating the directives
-            KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
-            String issuer = "me";
             JWTBuilder jwtBuilder = new JWTBuilder(issuer, testKeyPair.getPrivate());
             User adminUser = User.of("fred", "flintstone", role("test:user"));
             String token = jwtBuilder.forSubject(adminUser.getUserId()).withClaim("roles", adminUser.getRoles()).build();
@@ -103,10 +101,10 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
             dummyService.bindToKafka(new DummyTemplate());
 
             ServiceProxy.Client loginClient = serviceProxy.createClient("client", authTopicRequest, authTopicResponse);
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
+            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
 
             ServiceProxy.Client dummyClient = serviceProxy.createClient("client", dummyTopicRequest, dummyTopicResponse);
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<LoginResponse>>> dummyProxy = dummyClient.asyncProxy(new AuthenticationTemplate());
+            Function<MetadataEnvelope<SampleRequest>, CompletableFuture<MetadataEnvelope<Try<SampleResponse>>>> dummyProxy = dummyClient.asyncProxy(new DummyTemplate());
 
             sleep(1000);
 
@@ -135,9 +133,31 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
             }
 
-            // make an unauthenticated call to the DummyService
-//            CompletableFuture<MetadataEnvelope<com.github.dfauth.authzn.kafka.SampleResponse>> f1 = dummyProxy.apply(new MetadataEnvelope(
-//                    new com.github.dfauth.authzn.kafka.SampleRequest("fred")));
+            {
+                // make an unauthenticated call to the DummyService
+                CompletableFuture<MetadataEnvelope<Try<SampleResponse>>> f = dummyProxy.apply(new MetadataEnvelope(
+                        new SampleRequest("fred")));
+
+                // expect failure
+                try {
+                    f.get();
+                    fail("Oops. expected exception");
+                } catch (ExecutionException e) {
+                    assertEquals(e.getCause().getMessage(), "No authorization token found");
+                }
+            }
+
+            {
+                // make an authenticated call to the DummyService
+                CompletableFuture<MetadataEnvelope<Try<SampleResponse>>> f = dummyProxy.apply(new MetadataEnvelope(
+                        new SampleRequest("fred"),
+                        fredTokenMetadata));
+
+                MetadataEnvelope<Try<SampleResponse>> response = f.get();
+                assertNotNull(response);
+                assertTrue(response.getPayload().isSuccess());
+                response.getPayload().onSuccess(r -> assertEquals(r.getPayload(), "you said fred")).onFailure(t -> fail(t.getMessage()));
+            }
 
             // wait on this future
 //            MetadataEnvelope<com.github.dfauth.authzn.kafka.SampleResponse> response1 = f1.get();
@@ -166,8 +186,9 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
         return new AbstractProcessor<MetadataEnvelope<SampleRequest>, MetadataEnvelope<Try<SampleResponse>>>() {
             @Override
             protected MetadataEnvelope<Try<SampleResponse>> transform(MetadataEnvelope<SampleRequest> envelope) {
-                return new MetadataEnvelope<>(Try.ofCallable(() ->
-                        svc.serviceCall(envelope.getPayload())),
+
+                return new MetadataEnvelope<>(
+                        authenticator.apply(envelope).map(a -> svc.serviceCall(a.payload())),
                         withCorrelationIdFrom(envelope));
             }
         };

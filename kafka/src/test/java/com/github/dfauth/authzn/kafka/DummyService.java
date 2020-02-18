@@ -8,6 +8,6 @@ public class DummyService {
     private static final Logger logger = LoggerFactory.getLogger(DummyService.class);
 
     public SampleResponse serviceCall(SampleRequest request) {
-        return new SampleResponse("you said "+request);
+        return new SampleResponse("you said "+request.getPayload());
     }
 }

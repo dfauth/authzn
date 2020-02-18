@@ -5,12 +5,16 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public class ReactiveKafkaProducer<T> extends KafkaProducer<String, T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReactiveKafkaProducer.class);
 
     private final String topic;
 
@@ -26,6 +30,7 @@ public class ReactiveKafkaProducer<T> extends KafkaProducer<String, T> {
             if(m != null) {
                 future.complete(m);
             } else {
+                logger.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             }
         });
