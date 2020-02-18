@@ -27,7 +27,7 @@ public class ReactiveKafkaProducer<T> extends KafkaProducer<String, T> {
         CompletableFuture<RecordMetadata> future = new CompletableFuture<>();
         super.send(record,(m,e) -> {
             if(m != null) {
-                logger.error(String.format("metadata: topic %s partition %d offset %d",m.topic(),m.partition(),m.offset()));
+                logger.debug(String.format("metadata: topic %s partition %d offset %d",m.topic(),m.partition(),m.offset()));
                 future.complete(m);
             } else {
                 logger.error(e.getMessage(), e);
