@@ -16,7 +16,7 @@ import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.AuthorizationPolicySink;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
-import com.github.dfauth.kafka.KafkaSink;
+import com.github.dfauth.kafka.KafkaSubscriber;
 import com.github.dfauth.kafka.PolicyPermission;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -158,7 +158,7 @@ public class TestCase extends EmbeddedKafkaTest {
                     ))
                     .map(e -> e.mapPayload(toAvro))
                     .map(e -> envelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(topic, p, envelopeSerializer))
+                    .to(KafkaSubscriber.createSink(topic, p, envelopeSerializer))
                     .run(materializer());
 
             sleep(1000);
@@ -174,7 +174,7 @@ public class TestCase extends EmbeddedKafkaTest {
                     ))
                     .map(e -> e.mapPayload(toAvro))
                     .map(e -> envelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(topic, p, envelopeSerializer))
+                    .to(KafkaSubscriber.createSink(topic, p, envelopeSerializer))
                     .run(materializer());
 
             sleep(1000);
@@ -190,7 +190,7 @@ public class TestCase extends EmbeddedKafkaTest {
                     ))
                     .map(e -> e.mapPayload(toAvro))
                     .map(e -> envelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(topic, p, envelopeSerializer))
+                    .to(KafkaSubscriber.createSink(topic, p, envelopeSerializer))
                     .run(materializer());
 
             sleep(1000);

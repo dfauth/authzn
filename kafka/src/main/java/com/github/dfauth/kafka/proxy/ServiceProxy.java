@@ -1,5 +1,6 @@
 package com.github.dfauth.kafka.proxy;
 
+import akka.Done;
 import akka.actor.ActorSystem;
 import akka.kafka.ConsumerSettings;
 import akka.kafka.Subscriptions;
@@ -8,8 +9,9 @@ import akka.stream.Materializer;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.github.dfauth.authzn.avro.*;
+import com.github.dfauth.authzn.utils.AbstractSubscriber;
 import com.github.dfauth.avro.authzn.Envelope;
-import com.github.dfauth.kafka.KafkaSink;
+import com.github.dfauth.kafka.KafkaSubscriber;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.vavr.control.Try;
@@ -18,6 +20,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.reactivestreams.Processor;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAmount;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -48,8 +52,8 @@ public class ServiceProxy {
         this.avroSerialization = avroSerialization;
     }
 
-    public Client createClient(String groupId, String inTopic, String outTopic) {
-        return new Client(this, groupId, inTopic, outTopic);
+    public Client createClient(String inTopic, String outTopic) {
+        return new Client(this, inTopic, outTopic);
     }
 
     public <I,O> ServiceProxy.Service createService(Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
@@ -63,6 +67,8 @@ public class ServiceProxy {
         private final Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor;
         private String outTopic;
         private String inTopic;
+        private Consumer.Control control;
+        private KafkaSubscriber<Envelope> sink;
 
         public Service(ServiceProxy serviceProxy, Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
             this.serviceProxy = serviceProxy;
@@ -72,7 +78,16 @@ public class ServiceProxy {
             this.outTopic = outTopic;
         }
 
-        public <U extends SpecificRecord, V extends SpecificRecord> void bindToKafka(Template<I,O,U,V> template) {
+        public void close() {
+            if(this.sink != null) {
+                this.sink.close();
+            }
+            if(control != null) {
+                this.control.shutdown();
+            }
+        }
+
+        public <U extends SpecificRecord, V extends SpecificRecord> void bindToKafka(TransformationTemplate<I,O,U,V> template) {
             Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
 
             SpecificRecordDeserializer<Envelope> envelopeDeserializer = serviceProxy.avroSerialization.deserializer(Envelope.class);
@@ -82,12 +97,14 @@ public class ServiceProxy {
 
             EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization);
 
+            sink = new KafkaSubscriber<>(outTopic, serviceProxy.props, envelopeSerializer);
+
             ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(serviceProxy.system, new StringDeserializer(), envelopeDeserializer)
                     .withBootstrapServers(serviceProxy.brokerList)
                     .withGroupId(groupId)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
 
-            Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
+            control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
                     .map(r -> r.value())
                     .map(e -> inEnvelopeHandler.extractRecordWithMetadata(e))
                     .map(m -> m.mapPayload(template.requestTransformations().fromAvro()))
@@ -97,7 +114,7 @@ public class ServiceProxy {
             Source.fromPublisher(processor)
                     .map(m -> m.mapPayload(template.responseTransformations().toAvro()))
                     .map(e -> outEnvelopeHandler.envelope(e))
-                    .to(KafkaSink.createSink(outTopic, serviceProxy.props, envelopeSerializer))
+                    .to(Sink.fromSubscriber(sink))
                     .run(serviceProxy.materializer);
 
         }
@@ -109,15 +126,24 @@ public class ServiceProxy {
         private final ServiceProxy serviceProxy;
         private String outTopic;
         private String inTopic;
+        private Consumer.Control control;
+        private KafkaSubscriber<Envelope> sink;
+        private AbstractSubscriber<MetadataEnvelope<Try<O>>> subscriber;
 
-        public Client(ServiceProxy serviceProxy, String groupId, String inTopic, String outTopic) {
+        public Client(ServiceProxy serviceProxy, String inTopic, String outTopic) {
             this.serviceProxy = serviceProxy;
-            this.groupId = groupId;
+            this.groupId = UUID.randomUUID().toString();
             this.inTopic = inTopic;
             this.outTopic = outTopic;
         }
 
-        public <U extends SpecificRecord, V extends SpecificRecord> Function<MetadataEnvelope<I>, CompletableFuture<MetadataEnvelope<Try<O>>>> asyncProxy(Template<I,O,U,V> template) {
+        public CompletionStage<Done> close() {
+            this.subscriber.close();
+            this.sink.close();
+            return this.control.shutdown();
+        }
+
+        public <U extends SpecificRecord, V extends SpecificRecord> Function<MetadataEnvelope<I>, CompletableFuture<MetadataEnvelope<Try<O>>>> asyncProxy(TransformationTemplate<I,O,U,V> template) {
             Config consumerConfig = ConfigFactory.load().getConfig("akka.kafka.consumer");
 
             SpecificRecordDeserializer<Envelope> envelopeDeserializer = serviceProxy.avroSerialization.deserializer(Envelope.class);
@@ -132,11 +158,27 @@ public class ServiceProxy {
                     .withGroupId(groupId)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
 
+            this.sink = new KafkaSubscriber<>(inTopic, serviceProxy.props, envelopeSerializer);
+
             return i -> {
 
                 AtomicReference<String> correlationId = new AtomicReference<>();
 
                 CompletableFuture<MetadataEnvelope<Try<O>>> f = new CompletableFuture<>();
+
+                subscriber = new AbstractSubscriber<MetadataEnvelope<Try<O>>>(){
+                    @Override
+                    protected void _onSubscribe(Subscription s) {
+                        s.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(MetadataEnvelope<Try<O>> e) {
+                        e.getPayload()
+                                .onSuccess(v -> f.complete(e))
+                                .onFailure(t -> f.completeExceptionally(t));
+                    }
+                };
 
                 Timer timer = new Timer();
                 Source.single(i)
@@ -156,25 +198,22 @@ public class ServiceProxy {
                             correlationId.set(k);
                             return i;
                         }).orElseGet(() -> {
-                            correlationId.set(UUID.randomUUID().toString());
+                            correlationId.set(groupId);
                             return m.withCorrelationId(correlationId.get());
                         }))
                         .map(m -> m.mapPayload(template.requestTransformations().toAvro()))
                         .map(e -> inEnvelopeHandler.envelope(e))
-                        .to(KafkaSink.createSink(inTopic, serviceProxy.props, envelopeSerializer))
+                        .to(Sink.fromSubscriber(sink))
                         .run(serviceProxy.materializer);
 
-                Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
+                control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
                         .map(r -> r.value())
+                        .wireTap(r -> logger.debug("value from kafka: "+r))
                         .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
                         .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
-                        .wireTap(m -> {timer.cancel();})
+                        .wireTap(m -> timer.cancel())
                         .map(m -> m.mapPayload(template.responseTransformations().fromAvro()))
-                        .to(Sink.foreach(e -> {
-                            e.getPayload()
-                                    .onSuccess(v -> f.complete(e))
-                                    .onFailure(t -> f.completeExceptionally(t));
-                        }))
+                        .to(Sink.fromSubscriber(subscriber))
                         .run(serviceProxy.materializer);
 
                 return f;

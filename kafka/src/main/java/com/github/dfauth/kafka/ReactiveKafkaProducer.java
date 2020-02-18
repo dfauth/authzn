@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 public class ReactiveKafkaProducer<T> extends KafkaProducer<String, T> {
 
@@ -23,11 +22,12 @@ public class ReactiveKafkaProducer<T> extends KafkaProducer<String, T> {
         this.topic = topic;
     }
 
-    public CompletionStage<RecordMetadata> send(T t) {
+    public CompletableFuture<RecordMetadata> send(T t) {
         ProducerRecord<String, T> record = new ProducerRecord<>(topic, t);
         CompletableFuture<RecordMetadata> future = new CompletableFuture<>();
         super.send(record,(m,e) -> {
             if(m != null) {
+                logger.error(String.format("metadata: topic %s partition %d offset %d",m.topic(),m.partition(),m.offset()));
                 future.complete(m);
             } else {
                 logger.error(e.getMessage(), e);

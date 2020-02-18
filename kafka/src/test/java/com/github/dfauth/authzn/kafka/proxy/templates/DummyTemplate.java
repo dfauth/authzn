@@ -8,11 +8,11 @@ import com.github.dfauth.authzn.avro.transformations.ResponseTransformations;
 import com.github.dfauth.authzn.kafka.SampleRequest;
 import com.github.dfauth.authzn.kafka.SampleResponse;
 import com.github.dfauth.kafka.proxy.EnvelopeHandlers;
-import com.github.dfauth.kafka.proxy.Template;
+import com.github.dfauth.kafka.proxy.TransformationTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DummyTemplate implements Template<SampleRequest, SampleResponse, com.github.dfauth.avro.authzn.SampleRequest, com.github.dfauth.avro.authzn.SampleResponse> {
+public class DummyTemplate implements TransformationTemplate<SampleRequest, SampleResponse, com.github.dfauth.avro.authzn.SampleRequest, com.github.dfauth.avro.authzn.SampleResponse> {
 
     private static final Logger logger = LoggerFactory.getLogger(DummyTemplate.class);
 

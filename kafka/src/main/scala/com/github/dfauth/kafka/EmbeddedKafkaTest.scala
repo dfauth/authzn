@@ -23,6 +23,8 @@ class EmbeddedKafkaTest extends EmbeddedKafka with LazyLogging {
       }
     } finally {
       EmbeddedKafka.stop()
+      materializer.shutdown()
+      system.terminate()
     }
   }
 

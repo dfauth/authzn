@@ -100,10 +100,10 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
             ServiceProxy.Service dummyService = serviceProxy.createService(asProcessor(dummySvc), "server", dummyTopicRequest, dummyTopicResponse);
             dummyService.bindToKafka(new DummyTemplate());
 
-            ServiceProxy.Client loginClient = serviceProxy.createClient("client", authTopicRequest, authTopicResponse);
+            ServiceProxy.Client loginClient = serviceProxy.createClient(authTopicRequest, authTopicResponse);
             Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
 
-            ServiceProxy.Client dummyClient = serviceProxy.createClient("client", dummyTopicRequest, dummyTopicResponse);
+            ServiceProxy.Client dummyClient = serviceProxy.createClient(dummyTopicRequest, dummyTopicResponse);
             Function<MetadataEnvelope<SampleRequest>, CompletableFuture<MetadataEnvelope<Try<SampleResponse>>>> dummyProxy = dummyClient.asyncProxy(new DummyTemplate());
 
             sleep(1000);
@@ -133,6 +133,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
             }
 
+            /**
             {
                 // make an unauthenticated call to the DummyService
                 CompletableFuture<MetadataEnvelope<Try<SampleResponse>>> f = dummyProxy.apply(new MetadataEnvelope(
@@ -157,7 +158,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 assertNotNull(response);
                 assertTrue(response.getPayload().isSuccess());
                 response.getPayload().onSuccess(r -> assertEquals(r.getPayload(), "you said fred")).onFailure(t -> fail(t.getMessage()));
-            }
+            } **/
 
             // wait on this future
 //            MetadataEnvelope<com.github.dfauth.authzn.kafka.SampleResponse> response1 = f1.get();

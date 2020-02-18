@@ -23,11 +23,21 @@ public class TryCatchUtils {
     }
 
     public static <T> T tryCatch(Callable<T> c, ExceptionHandler<T> handler) {
+        return tryCatch(c, handler, ()->{});
+    }
+
+    public static <T> T tryCatch(Callable<T> c, Runnable onFinally) {
+        return tryCatch(c, toRuntimeExceptionHandler(), onFinally);
+    }
+
+    public static <T> T tryCatch(Callable<T> c, ExceptionHandler<T> handler, Runnable onFinally) {
         try {
             return c.call();
         } catch (Throwable t) {
             logger.error(t.getMessage(), t);
             return handler.handle(t);
+        } finally {
+            onFinally.run();
         }
     }
 

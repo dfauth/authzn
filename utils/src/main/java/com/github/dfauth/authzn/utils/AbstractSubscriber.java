@@ -35,5 +35,9 @@ public abstract class AbstractSubscriber<T> implements Subscriber<T> {
     public void onComplete() {
         logger.debug("complete");
     }
+
+    public void close() {
+        subscriptionOpt.ifPresent(s -> s.cancel());
+    }
 }
 

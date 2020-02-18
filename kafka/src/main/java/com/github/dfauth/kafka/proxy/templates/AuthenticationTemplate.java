@@ -8,10 +8,10 @@ import com.github.dfauth.authzn.avro.transformations.ResponseTransformations;
 import com.github.dfauth.avro.authzn.LoginRequest;
 import com.github.dfauth.avro.authzn.LoginResponse;
 import com.github.dfauth.kafka.proxy.EnvelopeHandlers;
-import com.github.dfauth.kafka.proxy.Template;
+import com.github.dfauth.kafka.proxy.TransformationTemplate;
 
 
-public class AuthenticationTemplate implements Template<com.github.dfauth.authzn.domain.LoginRequest,com.github.dfauth.authzn.domain.LoginResponse, LoginRequest, LoginResponse> {
+public class AuthenticationTemplate implements TransformationTemplate<com.github.dfauth.authzn.domain.LoginRequest,com.github.dfauth.authzn.domain.LoginResponse, LoginRequest, LoginResponse> {
 
         @Override
         public EnvelopeHandlers<LoginRequest, LoginResponse> envelopeHandlers() {

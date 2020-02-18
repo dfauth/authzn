@@ -19,7 +19,7 @@ public class ConfluentSpecificRecordSerializer<T> extends SpecificRecordSerializ
     private final KafkaAvroSerializer kafkaAvroSerializer;
 
     public ConfluentSpecificRecordSerializer(SchemaRegistryClient schemaRegistryClient, Map<String, ?> properties) {
-        requireNonNull(properties, "null properties").forEach((s, o) -> logger.info("Properties entry [{}] -> [{}]", s, o));
+        requireNonNull(properties, "null properties").forEach((s, o) -> logger.debug("Properties entry [{}] -> [{}]", s, o));
 
         this.kafkaAvroSerializer = new KafkaAvroSerializer(schemaRegistryClient, properties);
     }

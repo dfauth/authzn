@@ -19,7 +19,7 @@ public class ConfluentSpecificRecordDeserializer<T> extends SpecificRecordDeseri
     private final KafkaAvroDeserializer kafkaAvroDeserializer;
 
     public ConfluentSpecificRecordDeserializer(SchemaRegistryClient schemaRegistryClient, Map<String, ?> properties) {
-        requireNonNull(properties, "null properties").forEach((s, o) -> logger.info("Properties entry [{}] -> [{}]", s, o));
+        requireNonNull(properties, "null properties").forEach((s, o) -> logger.debug("Properties entry [{}] -> [{}]", s, o));
         this.kafkaAvroDeserializer = new KafkaAvroDeserializer(requireNonNull(schemaRegistryClient, "null schemaRegistryClient"), properties);
 
     }

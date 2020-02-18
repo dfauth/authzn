@@ -5,7 +5,7 @@ import com.github.dfauth.authzn.avro.transformations.ResponseTransformations;
 import org.apache.avro.specific.SpecificRecord;
 
 
-public interface Template<I,O,U extends SpecificRecord, V extends SpecificRecord> {
+public interface TransformationTemplate<I,O,U extends SpecificRecord, V extends SpecificRecord> {
 
     EnvelopeHandlers<U,V> envelopeHandlers();
 
