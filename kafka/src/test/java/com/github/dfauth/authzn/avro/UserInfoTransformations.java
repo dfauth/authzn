@@ -3,6 +3,7 @@ package com.github.dfauth.authzn.avro;
 import com.github.dfauth.authzn.avro.transformations.RequestTransformations;
 import com.github.dfauth.authzn.avro.transformations.ResponseTransformations;
 import com.github.dfauth.authzn.domain.NoOp;
+import com.github.dfauth.authzn.domain.UserInfoRequest;
 import com.github.dfauth.authzn.domain.UserInfoResponse;
 import com.github.dfauth.avro.authzn.UserInfoResponseSuccess;
 import io.vavr.control.Try;
@@ -25,6 +26,21 @@ public class UserInfoTransformations {
         @Override
         public Function<com.github.dfauth.avro.authzn.NoOp, NoOp> fromAvro() {
             return avro -> NoOp.noOp;
+        }
+    }
+
+    public static class UserInfoRequestTransformations implements RequestTransformations<UserInfoRequest, com.github.dfauth.avro.authzn.UserInfoRequest> {
+
+        @Override
+        public Function<UserInfoRequest, com.github.dfauth.avro.authzn.UserInfoRequest> toAvro() {
+            return s -> com.github.dfauth.avro.authzn.UserInfoRequest.newBuilder()
+                    .setUserId(s.getUserId())
+                    .build();
+        }
+
+        @Override
+        public Function<com.github.dfauth.avro.authzn.UserInfoRequest, UserInfoRequest> fromAvro() {
+            return avro -> new UserInfoRequest(avro.getUserId());
         }
     }
 

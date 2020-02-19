@@ -53,6 +53,10 @@ protocol Authorization {
      string payload;
   }
 
+  record UserInfoRequest {
+    string userId;
+  }
+
   record UserInfoResponse {
     union {Exception, UserInfoResponseSuccess} payload;
   }
