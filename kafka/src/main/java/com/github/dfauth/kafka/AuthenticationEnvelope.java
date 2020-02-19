@@ -35,4 +35,8 @@ public class AuthenticationEnvelope<T> extends MetadataEnvelope<T> implements Us
     public Subject getSubject() {
         return this.user.toSubject();
     }
+
+    public User getUser() {
+        return this.user;
+    }
 }

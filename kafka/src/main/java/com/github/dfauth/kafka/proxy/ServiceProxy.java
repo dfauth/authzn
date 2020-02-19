@@ -52,12 +52,12 @@ public class ServiceProxy {
         this.avroSerialization = avroSerialization;
     }
 
-    public Client createClient(String inTopic, String outTopic) {
-        return new Client(this, inTopic, outTopic);
+    public Client createClient(String topic) {
+        return new Client(this, topic);
     }
 
-    public <I,O> ServiceProxy.Service createService(Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
-        return new Service(this, processor, groupId, inTopic, outTopic);
+    public <I,O> ServiceProxy.Service createService(Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String topic) {
+        return new Service(this, processor, groupId, topic);
     }
 
     public static class Service<I,O> {
@@ -65,17 +65,15 @@ public class ServiceProxy {
         private final String groupId;
         private final ServiceProxy serviceProxy;
         private final Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor;
-        private String outTopic;
-        private String inTopic;
+        private String topic;
         private Consumer.Control control;
         private KafkaSubscriber<Envelope> sink;
 
-        public Service(ServiceProxy serviceProxy, Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String inTopic, String outTopic) {
+        public Service(ServiceProxy serviceProxy, Processor<MetadataEnvelope<I>, MetadataEnvelope<Try<O>>> processor, String groupId, String topic) {
             this.serviceProxy = serviceProxy;
             this.processor = processor;
             this.groupId = groupId;
-            this.inTopic = inTopic;
-            this.outTopic = outTopic;
+            this.topic = topic;
         }
 
         public void close() {
@@ -97,21 +95,23 @@ public class ServiceProxy {
 
             EnvelopeHandler<V> outEnvelopeHandler = template.envelopeHandlers().outbound(serviceProxy.avroSerialization);
 
-            sink = new KafkaSubscriber<>(outTopic, serviceProxy.props, envelopeSerializer);
+            sink = new KafkaSubscriber<>(topic, serviceProxy.props, envelopeSerializer);
 
             ConsumerSettings<String, Envelope> consumerSettings = ConsumerSettings.apply(serviceProxy.system, new StringDeserializer(), envelopeDeserializer)
                     .withBootstrapServers(serviceProxy.brokerList)
                     .withGroupId(groupId)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
 
-            control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(inTopic, 0)))
+            control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(topic, 0)))
                     .map(r -> r.value())
                     .map(e -> inEnvelopeHandler.extractRecordWithMetadata(e))
+                    .filter(m -> m.isInbound())
                     .map(m -> m.mapPayload(template.requestTransformations().fromAvro()))
                     .to(Sink.fromSubscriber(processor))
                     .run(serviceProxy.materializer);
 
             Source.fromPublisher(processor)
+                    .map(m -> m.outbound())
                     .map(m -> m.mapPayload(template.responseTransformations().toAvro()))
                     .map(e -> outEnvelopeHandler.envelope(e))
                     .to(Sink.fromSubscriber(sink))
@@ -124,17 +124,15 @@ public class ServiceProxy {
 
         private final String groupId;
         private final ServiceProxy serviceProxy;
-        private String outTopic;
-        private String inTopic;
+        private String topic;
         private Consumer.Control control;
         private KafkaSubscriber<Envelope> sink;
         private AbstractSubscriber<MetadataEnvelope<Try<O>>> subscriber;
 
-        public Client(ServiceProxy serviceProxy, String inTopic, String outTopic) {
+        public Client(ServiceProxy serviceProxy, String topic) {
             this.serviceProxy = serviceProxy;
             this.groupId = UUID.randomUUID().toString();
-            this.inTopic = inTopic;
-            this.outTopic = outTopic;
+            this.topic = topic;
         }
 
         public CompletionStage<Done> close() {
@@ -158,7 +156,7 @@ public class ServiceProxy {
                     .withGroupId(groupId)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getString("auto.offset.reset"));
 
-            this.sink = new KafkaSubscriber<>(inTopic, serviceProxy.props, envelopeSerializer);
+            this.sink = new KafkaSubscriber<>(topic, serviceProxy.props, envelopeSerializer);
 
             return i -> {
 
@@ -201,15 +199,17 @@ public class ServiceProxy {
                             correlationId.set(groupId);
                             return m.withCorrelationId(correlationId.get());
                         }))
+                        .map(m -> m.inbound())
                         .map(m -> m.mapPayload(template.requestTransformations().toAvro()))
                         .map(e -> inEnvelopeHandler.envelope(e))
                         .to(Sink.fromSubscriber(sink))
                         .run(serviceProxy.materializer);
 
-                control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(outTopic, 0)))
-                        .map(r -> r.value())
+                control = Consumer.plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition(topic, 0)))
+                        .mapAsync(1,r -> CompletableFuture.completedFuture(r.value()))
                         .wireTap(r -> logger.debug("value from kafka: "+r))
                         .map(e -> outEnvelopeHandler.extractRecordWithMetadata(e))
+                        .filter(m -> m.isOutbound())
                         .filter(m -> m.correlationId().map(j -> correlationId.get().equals(j)).orElse(false))
                         .wireTap(m -> timer.cancel())
                         .map(m -> m.mapPayload(template.responseTransformations().fromAvro()))

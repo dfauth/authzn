@@ -5,7 +5,9 @@ import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.authzn.User;
 import com.github.dfauth.authzn.avro.AvroSerialization;
 import com.github.dfauth.authzn.avro.MetadataEnvelope;
-import com.github.dfauth.authzn.kafka.proxy.templates.DummyTemplate;
+import com.github.dfauth.authzn.domain.NoOp;
+import com.github.dfauth.authzn.domain.UserInfoResponse;
+import com.github.dfauth.authzn.kafka.proxy.templates.UserInfoTemplate;
 import com.github.dfauth.authzn.utils.AbstractProcessor;
 import com.github.dfauth.avro.authzn.LoginRequest;
 import com.github.dfauth.avro.authzn.LoginResponse;
@@ -46,10 +48,8 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
     private Subject adminSubject = ImmutableSubject.of(USER.of("wilma"), ROLE.of("admin"));
     private Subject userSubject = ImmutableSubject.of(USER.of("fred"), ROLE.of("user"));
-    private String authTopicRequest = "auth-request";
-    private String authTopicResponse = "auth-response";
-    private String dummyTopicRequest = "dummy-request";
-    private String dummyTopicResponse = "dummy-response";
+    private String authTopic = "auth";
+    private String userInfoTopic = "userInfo";
 
     private Map<String, String> wilmaTokenMetadata;
     private Map<String, String> fredTokenMetadata;
@@ -82,8 +82,6 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
         MockAuthenticationService dummyAuthSvc = new MockAuthenticationService();
 
-        DummyService dummySvc = new DummyService();
-
         withEmbeddedKafka(p -> tryCatch(() -> {
 
             String brokerList = p.getProperty("bootstrap.servers");
@@ -92,23 +90,19 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             AvroSerialization avroSerialization = AvroSerialization.of(schemaRegClient, schemaRegUrl);
 
-            ServiceProxy serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
+            ServiceProxy serviceProxy = null;
+            ServiceProxy.Service loginService = null;
+            ServiceProxy.Client loginClient = null;
 
-            ServiceProxy.Service loginService = serviceProxy.createService(asProcessor(dummyAuthSvc), "server", authTopicRequest, authTopicResponse);
-            loginService.bindToKafka(new AuthenticationTemplate());
+            try {
+                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
+                loginService = serviceProxy.createService(asProcessor(dummyAuthSvc), "server", authTopic);
+                loginService.bindToKafka(new AuthenticationTemplate());
+                loginClient = serviceProxy.createClient(authTopic);
+                Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
 
-            ServiceProxy.Service dummyService = serviceProxy.createService(asProcessor(dummySvc), "server", dummyTopicRequest, dummyTopicResponse);
-            dummyService.bindToKafka(new DummyTemplate());
+                sleep(1000);
 
-            ServiceProxy.Client loginClient = serviceProxy.createClient(authTopicRequest, authTopicResponse);
-            Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
-
-            ServiceProxy.Client dummyClient = serviceProxy.createClient(dummyTopicRequest, dummyTopicResponse);
-            Function<MetadataEnvelope<SampleRequest>, CompletableFuture<MetadataEnvelope<Try<SampleResponse>>>> dummyProxy = dummyClient.asyncProxy(new DummyTemplate());
-
-            sleep(1000);
-
-            {
                 // make the authentication fail
                 CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
                         com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah2").build()));
@@ -120,9 +114,20 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 } catch (ExecutionException e) {
                     assertEquals(e.getCause().getMessage(), "Authentication failure for user fred");
                 }
+            } finally {
+                loginClient.close();
+                loginService.close();
             }
 
-            {
+            try {
+                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
+                loginService = serviceProxy.createService(asProcessor(dummyAuthSvc), "server", authTopic);
+                loginService.bindToKafka(new AuthenticationTemplate());
+                loginClient = serviceProxy.createClient(authTopic);
+                Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
+
+                sleep(1000);
+
                 // try again, make the authentication pass
                 CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
                         com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah").build()));
@@ -131,13 +136,24 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 assertNotNull(response);
                 assertTrue(response.getPayload().isSuccess());
                 response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
+            } finally {
+                loginClient.close();
+                loginService.close();
             }
 
-            /**
-            {
+            ServiceProxy.Service dummyService = null;
+            ServiceProxy.Client dummyClient = null;
+            try {
+                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
+                dummyService = serviceProxy.createService(asProcessorUserInfo(dummyAuthSvc), "server", userInfoTopic);
+                dummyService.bindToKafka(new UserInfoTemplate());
+                dummyClient = serviceProxy.createClient(userInfoTopic);
+                Function<MetadataEnvelope<SampleRequest>, CompletableFuture<MetadataEnvelope<Try<SampleResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserInfoTemplate());
+
+                sleep(1000);
+
                 // make an unauthenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<SampleResponse>>> f = dummyProxy.apply(new MetadataEnvelope(
-                        new SampleRequest("fred")));
+                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(NoOp.noOp));
 
                 // expect failure
                 try {
@@ -146,19 +162,31 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                 } catch (ExecutionException e) {
                     assertEquals(e.getCause().getMessage(), "No authorization token found");
                 }
+            } finally {
+                dummyClient.close();
+                dummyService.close();
             }
 
-            {
-                // make an authenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<SampleResponse>>> f = dummyProxy.apply(new MetadataEnvelope(
-                        new SampleRequest("fred"),
-                        fredTokenMetadata));
+            try {
+                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
+                dummyService = serviceProxy.createService(asProcessorUserInfo(dummyAuthSvc), "server", userInfoTopic);
+                dummyService.bindToKafka(new UserInfoTemplate());
+                dummyClient = serviceProxy.createClient(userInfoTopic);
+                Function<MetadataEnvelope<SampleRequest>, CompletableFuture<MetadataEnvelope<Try<SampleResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserInfoTemplate());
 
-                MetadataEnvelope<Try<SampleResponse>> response = f.get();
+                sleep(1000);
+
+                // make an authenticated call to the DummyService
+                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(NoOp.noOp, fredTokenMetadata));
+
+                MetadataEnvelope<Try<UserInfoResponse>> response = f.get();
                 assertNotNull(response);
                 assertTrue(response.getPayload().isSuccess());
-                response.getPayload().onSuccess(r -> assertEquals(r.getPayload(), "you said fred")).onFailure(t -> fail(t.getMessage()));
-            } **/
+                response.getPayload().onSuccess(r -> assertEquals(r.getUserId(), "fred")).onFailure(t -> fail(t.getMessage()));
+            } finally {
+                dummyClient.close();
+                dummyService.close();
+            }
 
             // wait on this future
 //            MetadataEnvelope<com.github.dfauth.authzn.kafka.SampleResponse> response1 = f1.get();
@@ -174,22 +202,22 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
             @Override
             protected MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> transform(MetadataEnvelope<com.github.dfauth.authzn.domain.LoginRequest> envelope) {
                 return new MetadataEnvelope<>(Try.ofCallable(() ->
-                        svc.serviceCall(envelope.getPayload())),
+                        svc.login(envelope.getPayload())),
                         withCorrelationIdFrom(envelope));
             }
         };
     }
 
-    private Processor<MetadataEnvelope<SampleRequest>, MetadataEnvelope<Try<SampleResponse>>> asProcessor(DummyService svc) {
+    private Processor<MetadataEnvelope<Void>, MetadataEnvelope<Try<UserInfoResponse>>> asProcessorUserInfo(MockAuthenticationService svc) {
 
-        Function<MetadataEnvelope<SampleRequest>, Try<AuthenticationEnvelope<SampleRequest>>> authenticator = authenticate(jwtVerifier);
+        Function<MetadataEnvelope<Void>, Try<AuthenticationEnvelope<Void>>> authenticator = authenticate(jwtVerifier);
 
-        return new AbstractProcessor<MetadataEnvelope<SampleRequest>, MetadataEnvelope<Try<SampleResponse>>>() {
+        return new AbstractProcessor<MetadataEnvelope<Void>, MetadataEnvelope<Try<UserInfoResponse>>>() {
             @Override
-            protected MetadataEnvelope<Try<SampleResponse>> transform(MetadataEnvelope<SampleRequest> envelope) {
+            protected MetadataEnvelope<Try<UserInfoResponse>> transform(MetadataEnvelope<Void> envelope) {
 
                 return new MetadataEnvelope<>(
-                        authenticator.apply(envelope).map(a -> svc.serviceCall(a.payload())),
+                        authenticator.apply(envelope).map(a -> svc.getUserInfo(a)),
                         withCorrelationIdFrom(envelope));
             }
         };

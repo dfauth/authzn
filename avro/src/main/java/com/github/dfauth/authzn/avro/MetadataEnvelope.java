@@ -13,6 +13,7 @@ public class MetadataEnvelope<T> {
     public static final String TIMEOUT = "timeoutDuration";
     private static final String AUTHORIZATION = "Authorization";
     private static final String CORRELATION_ID = "correlationId";
+    private static final String DIRECTION = "direction";
 
     private final T payload;
     private final Map<String, String> metadata;
@@ -57,8 +58,36 @@ public class MetadataEnvelope<T> {
     }
 
     public MetadataEnvelope<T> withCorrelationId(String id) {
+        return new MetadataEnvelope<>(payload, transformMetadata(CORRELATION_ID, id));
+    }
+
+    public MetadataEnvelope<T> inbound() {
+        return new MetadataEnvelope<>(payload, transformMetadata(DIRECTION, Direction.inbound.name()));
+    }
+
+    public MetadataEnvelope<T> outbound() {
+        return new MetadataEnvelope<>(payload, transformMetadata(DIRECTION, Direction.outbound.name()));
+    }
+
+    private Map<String, String> transformMetadata(String key, String value) {
         Map<String, String> tmp = new HashMap<>(metadata);
-        tmp.put(CORRELATION_ID, id);
-        return new MetadataEnvelope<>(payload, tmp);
+        tmp.put(key, value);
+        return tmp;
+    }
+
+    public boolean isInbound() {
+        return Direction.inbound.isPresent(metadata);
+    }
+
+    public boolean isOutbound() {
+        return Direction.outbound.isPresent(metadata);
+    }
+
+    private enum Direction {
+        inbound, outbound;
+
+        public boolean isPresent(Map<String, String> metadata) {
+            return metadata.containsKey(DIRECTION) && metadata.get(DIRECTION).equalsIgnoreCase(name());
+        }
     }
 }

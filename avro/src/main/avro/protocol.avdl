@@ -24,6 +24,9 @@ protocol Authorization {
      string message;
   }
 
+  record NoOp {
+  }
+
   record LoginRequest {
      string username;
      string passwordHash;
@@ -48,6 +51,16 @@ protocol Authorization {
 
   record SampleResponseSuccess {
      string payload;
+  }
+
+  record UserInfoResponse {
+    union {Exception, UserInfoResponseSuccess} payload;
+  }
+
+  record UserInfoResponseSuccess {
+    string userId;
+    union {null, string} companyId;
+    @java-class("java.util.HashSet") array<string> roles;
   }
 
 }
