@@ -5,25 +5,23 @@ import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.authzn.User;
 import com.github.dfauth.authzn.avro.AvroSerialization;
 import com.github.dfauth.authzn.avro.MetadataEnvelope;
-import com.github.dfauth.authzn.domain.NoOp;
-import com.github.dfauth.authzn.domain.UserInfoRequest;
-import com.github.dfauth.authzn.domain.UserInfoResponse;
+import com.github.dfauth.authzn.domain.*;
 import com.github.dfauth.authzn.kafka.proxy.templates.UserAdminTemplate;
 import com.github.dfauth.authzn.kafka.proxy.templates.UserInfoTemplate;
 import com.github.dfauth.authzn.utils.AbstractProcessor;
-import com.github.dfauth.avro.authzn.LoginRequest;
-import com.github.dfauth.avro.authzn.LoginResponse;
+import com.github.dfauth.authzn.utils.CloseableProcessor;
 import com.github.dfauth.jwt.JWTBuilder;
 import com.github.dfauth.jwt.JWTVerifier;
 import com.github.dfauth.jwt.KeyPairFactory;
 import com.github.dfauth.kafka.AuthenticationEnvelope;
 import com.github.dfauth.kafka.EmbeddedKafkaTest;
+import com.github.dfauth.kafka.proxy.AsyncBinding;
+import com.github.dfauth.kafka.proxy.AsyncBindingClient;
 import com.github.dfauth.kafka.proxy.ServiceProxy;
 import com.github.dfauth.kafka.proxy.templates.AuthenticationTemplate;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.vavr.control.Try;
-import org.reactivestreams.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeTest;
@@ -93,149 +91,140 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
             AvroSerialization avroSerialization = AvroSerialization.of(schemaRegClient, schemaRegUrl);
 
-            ServiceProxy serviceProxy = null;
-            ServiceProxy.Service loginService = null;
-            ServiceProxy.Client loginClient = null;
+            final ServiceProxy.Factory factory = ServiceProxy.newFactory(system(), materializer(), p, brokerList, avroSerialization);
+            final ServiceProxy<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> loginServiceProxy =
+                    factory.createServiceProxy(authTopic, new AuthenticationTemplate());
+            final ServiceProxy<NoOp, UserInfoResponse, com.github.dfauth.avro.authzn.NoOp, com.github.dfauth.avro.authzn.UserInfoResponse> userInfoServiceProxy =
+                    factory.createServiceProxy(userInfoTopic, new UserInfoTemplate());
+            final ServiceProxy<UserInfoRequest, UserInfoResponse, com.github.dfauth.avro.authzn.UserInfoRequest, com.github.dfauth.avro.authzn.UserInfoResponse> userAdminServiceProxy =
+                    factory.createServiceProxy(userAdminTopic, new UserAdminTemplate());
+            final AsyncBinding loginService = loginServiceProxy.createAsyncBinding(asProcessor(dummyAuthSvc), "server");
+            final AsyncBinding userInfoService = userInfoServiceProxy.createAsyncBinding(asProcessorUserInfo(dummyAuthSvc), "server");
+            final AsyncBinding userAdminService = userAdminServiceProxy.createAsyncBinding(asProcessorUserInfoFor(dummyAuthSvc), "server");
 
             try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                loginService = serviceProxy.createService(asProcessor(dummyAuthSvc), "server", authTopic);
-                loginService.bindToKafka(new AuthenticationTemplate());
-                loginClient = serviceProxy.createClient(authTopic);
-                Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
 
-                sleep(1000);
 
-                // make the authentication fail
-                CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
-                        com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah2").build()));
-
-                // expect failure
+                AsyncBindingClient<LoginRequest, LoginResponse, com.github.dfauth.avro.authzn.LoginRequest, com.github.dfauth.avro.authzn.LoginResponse> loginClient = null;
                 try {
-                    f.get();
-                    fail("Oops. expected exception");
-                } catch (ExecutionException e) {
-                    assertEquals(e.getCause().getMessage(), "Authentication failure for user fred");
+                    loginClient = loginServiceProxy.createAsyncBindingClient();
+
+                    sleep(1000);
+
+                    // make the authentication fail
+                    CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginClient.call(new MetadataEnvelope(
+                            com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah2").build()));
+
+                    // expect failure
+                    try {
+                        f.get();
+                        fail("Oops. expected exception");
+                    } catch (ExecutionException e) {
+                        assertEquals(e.getCause().getMessage(), "Authentication failure for user fred");
+                    }
+                } finally {
+                    if(loginClient != null) {
+                        loginClient.close();
+                    }
                 }
+
+                try {
+                    loginClient = loginServiceProxy.createAsyncBindingClient();
+
+                    sleep(1000);
+
+                    // try again, make the authentication pass
+                    CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginClient.call(new MetadataEnvelope(
+                            com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah").build()));
+
+                    MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> response = f.get();
+                    assertNotNull(response);
+                    assertTrue(response.getPayload().isSuccess());
+                    response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
+                } finally {
+                    if(loginClient != null) {
+                        loginClient.close();
+                    }
+                }
+
+                AsyncBindingClient<NoOp, UserInfoResponse, com.github.dfauth.avro.authzn.NoOp, com.github.dfauth.avro.authzn.UserInfoResponse> userInfoClient = null;
+                try {
+                    userInfoClient = userInfoServiceProxy.createAsyncBindingClient();
+
+                    // make an unauthenticated call to the DummyService
+                    CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = userInfoClient.call(new MetadataEnvelope(NoOp.noOp));
+
+                    // expect failure
+                    try {
+                        f.get();
+                        fail("Oops. expected exception");
+                    } catch (ExecutionException e) {
+                        assertEquals(e.getCause().getMessage(), "No authorization token found");
+                    }
+                } finally {
+                    if(userInfoClient != null) {
+                        userInfoClient.close();
+                    }
+                }
+
+                try {
+                    userInfoClient = userInfoServiceProxy.createAsyncBindingClient();
+
+                    // make an authenticated call to the DummyService
+                    CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = userInfoClient.call(new MetadataEnvelope(NoOp.noOp, fredTokenMetadata));
+
+                    MetadataEnvelope<Try<UserInfoResponse>> response = f.get();
+                    assertNotNull(response);
+                    assertTrue(response.getPayload().isSuccess());
+                    response.getPayload().onSuccess(r -> assertEquals(r.getUserId(), "fred")).onFailure(t -> fail(t.getMessage()));
+                } finally {
+                    if(userInfoClient != null) {
+                        userInfoClient.close();
+                    }
+                }
+
+                // final endpoint is authenticated and requires admin role
+                AsyncBindingClient<UserInfoRequest, UserInfoResponse, com.github.dfauth.avro.authzn.UserInfoRequest, com.github.dfauth.avro.authzn.UserInfoResponse> userAdminClient = null;
+                try {
+                    userAdminClient = userAdminServiceProxy.createAsyncBindingClient();
+
+                    // make an authenticated call to the DummyService
+                    CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = userAdminClient.call(new MetadataEnvelope(new UserInfoRequest("fred"), fredTokenMetadata));
+
+                    // expect failure
+                    try {
+                        f.get();
+                        fail("Oops. expected exception");
+                    } catch (ExecutionException e) {
+                        assertEquals(e.getCause().getMessage(), "ImmutablePrincipal([ImmutablePrincipal(USER,default,fred), ImmutablePrincipal(ROLE,default,user)]) is not authorized to perform actions Optional[VIEW] on resource /users/fred");
+                    }
+                } finally {
+                    if(userAdminClient != null) {
+                        userAdminClient.close();
+                    }
+                }
+
+                // final endpoint is authenticated and requires admin role - wilma should succeed
+                try {
+                    userAdminClient = userAdminServiceProxy.createAsyncBindingClient();
+
+                    // make an authenticated call to the DummyService
+                    CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = userAdminClient.call(new MetadataEnvelope(new UserInfoRequest("wilma"), wilmaTokenMetadata));
+
+                    MetadataEnvelope<Try<UserInfoResponse>> response = f.get();
+                    assertNotNull(response);
+                    assertTrue(response.getPayload().isSuccess());
+                    response.getPayload().onSuccess(r -> assertEquals(r.getUserId(), "wilma")).onFailure(t -> fail(t.getMessage()));
+                } finally {
+                    if(userAdminClient != null) {
+                        userAdminClient.close();
+                    }
+                }
+
             } finally {
-                loginClient.close();
                 loginService.close();
-            }
-
-            try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                loginService = serviceProxy.createService(asProcessor(dummyAuthSvc), "server", authTopic);
-                loginService.bindToKafka(new AuthenticationTemplate());
-                loginClient = serviceProxy.createClient(authTopic);
-                Function<MetadataEnvelope<LoginRequest>, CompletableFuture<MetadataEnvelope<Try<LoginResponse>>>> loginProxy = loginClient.asyncProxy(new AuthenticationTemplate());
-
-                sleep(1000);
-
-                // try again, make the authentication pass
-                CompletableFuture<MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> f = loginProxy.apply(new MetadataEnvelope(
-                        com.github.dfauth.authzn.domain.LoginRequest.builder().withUsername("fred").withPasswordHash("blah").withRandom("blah").build()));
-
-                MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> response = f.get();
-                assertNotNull(response);
-                assertTrue(response.getPayload().isSuccess());
-                response.getPayload().onSuccess(r -> assertNotNull(r.getToken())).onFailure(t -> fail(t.getMessage()));
-            } finally {
-                loginClient.close();
-                loginService.close();
-            }
-
-            ServiceProxy.Service dummyService = null;
-            ServiceProxy.Client dummyClient = null;
-            try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                dummyService = serviceProxy.createService(asProcessorUserInfo(dummyAuthSvc), "server", userInfoTopic);
-                dummyService.bindToKafka(new UserInfoTemplate());
-                dummyClient = serviceProxy.createClient(userInfoTopic);
-                Function<MetadataEnvelope<NoOp>, CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserInfoTemplate());
-
-                sleep(1000);
-
-                // make an unauthenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(NoOp.noOp));
-
-                // expect failure
-                try {
-                    f.get();
-                    fail("Oops. expected exception");
-                } catch (ExecutionException e) {
-                    assertEquals(e.getCause().getMessage(), "No authorization token found");
-                }
-            } finally {
-                dummyClient.close();
-                dummyService.close();
-            }
-
-            try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                dummyService = serviceProxy.createService(asProcessorUserInfo(dummyAuthSvc), "server", userInfoTopic);
-                dummyService.bindToKafka(new UserInfoTemplate());
-                dummyClient = serviceProxy.createClient(userInfoTopic);
-                Function<MetadataEnvelope<NoOp>, CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserInfoTemplate());
-
-                sleep(1000);
-
-                // make an authenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(NoOp.noOp, fredTokenMetadata));
-
-                MetadataEnvelope<Try<UserInfoResponse>> response = f.get();
-                assertNotNull(response);
-                assertTrue(response.getPayload().isSuccess());
-                response.getPayload().onSuccess(r -> assertEquals(r.getUserId(), "fred")).onFailure(t -> fail(t.getMessage()));
-            } finally {
-                dummyClient.close();
-                dummyService.close();
-            }
-
-            // final endpoint is authenticated and requires admin role
-            try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                dummyService = serviceProxy.createService(asProcessorUserInfoFor(dummyAuthSvc), "server", userAdminTopic);
-                dummyService.bindToKafka(new UserAdminTemplate());
-                dummyClient = serviceProxy.createClient(userAdminTopic);
-                Function<MetadataEnvelope<UserInfoRequest>, CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserAdminTemplate());
-
-                sleep(1000);
-
-                // make an authenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(new UserInfoRequest("fred"), fredTokenMetadata));
-
-                // expect failure
-                try {
-                    f.get();
-                    fail("Oops. expected exception");
-                } catch (ExecutionException e) {
-                    assertEquals(e.getCause().getMessage(), "ImmutablePrincipal([ImmutablePrincipal(ROLE,default,user), ImmutablePrincipal(USER,default,fred)]) is not authorized to perform actions Optional[VIEW] on resource /users/fred");
-                }
-            } finally {
-                dummyClient.close();
-                dummyService.close();
-            }
-
-            // final endpoint is authenticated and requires admin role - wilma should succeed
-            try {
-                serviceProxy = new ServiceProxy(system(), materializer(), p, brokerList, avroSerialization);
-                dummyService = serviceProxy.createService(asProcessorUserInfoFor(dummyAuthSvc), "server", userAdminTopic);
-                dummyService.bindToKafka(new UserAdminTemplate());
-                dummyClient = serviceProxy.createClient(userAdminTopic);
-                Function<MetadataEnvelope<UserInfoRequest>, CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>>> dummyProxy = dummyClient.asyncProxy(new UserAdminTemplate());
-
-                sleep(1000);
-
-                // make an authenticated call to the DummyService
-                CompletableFuture<MetadataEnvelope<Try<UserInfoResponse>>> f = dummyProxy.apply(new MetadataEnvelope(new UserInfoRequest("wilma"), wilmaTokenMetadata));
-
-                MetadataEnvelope<Try<UserInfoResponse>> response = f.get();
-                assertNotNull(response);
-                assertTrue(response.getPayload().isSuccess());
-                response.getPayload().onSuccess(r -> assertEquals(r.getUserId(), "wilma")).onFailure(t -> fail(t.getMessage()));
-            } finally {
-                dummyClient.close();
-                dummyService.close();
+                userInfoService.close();
+                userAdminService.close();
             }
 
             return null;
@@ -243,7 +232,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
     }
 
-    private Processor<MetadataEnvelope<com.github.dfauth.authzn.domain.LoginRequest>, MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> asProcessor(MockAuthenticationService svc) {
+    private CloseableProcessor<MetadataEnvelope<com.github.dfauth.authzn.domain.LoginRequest>, MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>> asProcessor(MockAuthenticationService svc) {
         return new AbstractProcessor<MetadataEnvelope<com.github.dfauth.authzn.domain.LoginRequest>, MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>>>() {
             @Override
             protected MetadataEnvelope<Try<com.github.dfauth.authzn.domain.LoginResponse>> transform(MetadataEnvelope<com.github.dfauth.authzn.domain.LoginRequest> envelope) {
@@ -254,7 +243,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
         };
     }
 
-    private Processor<MetadataEnvelope<NoOp>, MetadataEnvelope<Try<UserInfoResponse>>> asProcessorUserInfo(MockAuthenticationService svc) {
+    private CloseableProcessor<MetadataEnvelope<NoOp>, MetadataEnvelope<Try<UserInfoResponse>>> asProcessorUserInfo(MockAuthenticationService svc) {
 
         Function<MetadataEnvelope<NoOp>, Try<AuthenticationEnvelope<NoOp>>> authenticator = authenticate(jwtVerifier);
 
@@ -270,7 +259,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
 
     }
 
-    private Processor<MetadataEnvelope<UserInfoRequest>, MetadataEnvelope<Try<UserInfoResponse>>> asProcessorUserInfoFor(MockAuthenticationService svc) {
+    private CloseableProcessor<MetadataEnvelope<UserInfoRequest>, MetadataEnvelope<Try<UserInfoResponse>>> asProcessorUserInfoFor(MockAuthenticationService svc) {
 
         Function<MetadataEnvelope<UserInfoRequest>, Try<AuthenticationEnvelope<UserInfoRequest>>> authenticator = authenticate(jwtVerifier);
 

@@ -49,11 +49,12 @@ public class KafkaSubscriber<T> implements Subscriber<T> {
     @Override
     public void onError(Throwable t) {
         logger.info(t.getMessage(), t);
+        close();
     }
 
     @Override
     public void onComplete() {
-        this.subscription.ifPresent(s -> s.cancel());
+        close();
     }
 
     public void close() {

@@ -1,9 +1,6 @@
 package com.github.dfauth.authzn;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class ImmutableSubject implements Subject {
 

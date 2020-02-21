@@ -1,6 +1,5 @@
 package com.github.dfauth.authzn.utils;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -9,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 
 
-public abstract class AbstractProcessor<I, O> implements Processor<I,O> {
+public abstract class AbstractProcessor<I, O> implements CloseableProcessor<I,O> {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractProcessor.class);
 
@@ -59,5 +58,9 @@ public abstract class AbstractProcessor<I, O> implements Processor<I,O> {
         return name.map(s -> s+" "+str).orElse(str);
     }
 
+    public void close() {
+        subscriptionOpt.ifPresent(s -> s.cancel());
+        subscriberOpt.ifPresent(s -> s.onComplete());
+    }
 }
 
