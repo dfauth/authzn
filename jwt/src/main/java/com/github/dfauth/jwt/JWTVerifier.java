@@ -1,13 +1,14 @@
 package com.github.dfauth.jwt;
 
+import com.auth0.jwk.JwkException;
+import com.auth0.jwk.JwkProvider;
 import com.github.dfauth.authzn.User;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.Key;
 import java.security.PublicKey;
 import java.util.*;
 import java.util.function.Function;
@@ -28,18 +29,49 @@ public class JWTVerifier {
         return new UserBuilder().withUserId(userId).withCompanyId(companyId).withExpiry(expiry.toInstant()).withRoles(roles).build();
     };
 
-    private final PublicKey publicKey;
     private final String issuer;
+    private SigningKeyResolver keyResolver;
 
     public JWTVerifier(PublicKey publicKey, String issuer) {
-        this.publicKey = publicKey;
+        this.keyResolver = new SigningKeyResolver() {
+            @Override
+            public Key resolveSigningKey(JwsHeader jwsHeader, Claims claims) {
+                return publicKey;
+            }
+
+            @Override
+            public Key resolveSigningKey(JwsHeader jwsHeader, String s) {
+                return publicKey;
+            }
+        };
+        this.issuer = issuer;
+    }
+
+    private static ClaimsSigningKeyResolver wrap(JwkProvider jwkProvider) {
+        return (h, c) -> {
+            try {
+                return jwkProvider.get((String)c.get("kid")).getPublicKey();
+            } catch (JwkException e) {
+                logger.error(e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
+    public JWTVerifier(JwkProvider jwkProvider, String issuer) {
+        this.keyResolver = wrap(jwkProvider);
+        this.issuer = issuer;
+    }
+
+    public JWTVerifier(SigningKeyResolver resolver, String issuer) {
+        this.keyResolver = resolver;
         this.issuer = issuer;
     }
 
     public <T> Try<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
         try {
             Jws<Claims> claims = Jwts.parser()
-                    .setSigningKey(publicKey)
+                    .setSigningKeyResolver(keyResolver)
                     .requireIssuer(issuer)
                     .parseClaimsJws(token);
             return Try.success(f.apply(claims));
@@ -61,6 +93,20 @@ public class JWTVerifier {
         }
 
         Try<T> parseToken(String t);
+    }
+
+    public interface ClaimsSigningKeyResolver extends SigningKeyResolver {
+        @Override
+        default Key resolveSigningKey(JwsHeader header, String plaintext) {
+            throw new UnsupportedOperationException("key resolution based on plaintext not supported, use "+PlaintextSigningKeyResolver.class.getCanonicalName());
+        }
+    }
+
+    public interface PlaintextSigningKeyResolver extends SigningKeyResolver {
+        @Override
+        default Key resolveSigningKey(JwsHeader header, Claims claims) {
+            throw new UnsupportedOperationException("key resolution based on claims not supported, use "+ClaimsSigningKeyResolver.class.getCanonicalName());
+        }
     }
 }
 
