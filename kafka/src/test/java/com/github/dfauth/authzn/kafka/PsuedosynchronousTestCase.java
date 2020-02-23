@@ -196,7 +196,7 @@ public class PsuedosynchronousTestCase extends EmbeddedKafkaTest {
                         f.get();
                         fail("Oops. expected exception");
                     } catch (ExecutionException e) {
-                        assertEquals(e.getCause().getMessage(), "ImmutablePrincipal([ImmutablePrincipal(USER,default,fred), ImmutablePrincipal(ROLE,default,user)]) is not authorized to perform actions Optional[VIEW] on resource /users/fred");
+                        assertTrue(e.getCause().getMessage().contains("is not authorized to perform actions Optional[VIEW] on resource /users/fred"));
                     }
                 } finally {
                     if(userAdminClient != null) {

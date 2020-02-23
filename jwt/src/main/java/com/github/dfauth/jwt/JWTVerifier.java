@@ -68,6 +68,10 @@ public class JWTVerifier {
         this.issuer = issuer;
     }
 
+    public Try<User> authenticateToken(String token) {
+        return authenticateToken(token, asUser);
+    }
+
     public <T> Try<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
         try {
             Jws<Claims> claims = Jwts.parser()
@@ -95,7 +99,14 @@ public class JWTVerifier {
         Try<T> parseToken(String t);
     }
 
-    public interface ClaimsSigningKeyResolver extends SigningKeyResolver {
+    public interface ClaimsSigningKeyResolver<T extends JwsHeader<T>> extends SigningKeyResolver {
+        @Override
+        default Key resolveSigningKey(JwsHeader header, Claims claims) {
+            return resolveSigningKeyT(header, claims);
+        }
+
+        Key resolveSigningKeyT(JwsHeader<T> header, Claims claims);
+
         @Override
         default Key resolveSigningKey(JwsHeader header, String plaintext) {
             throw new UnsupportedOperationException("key resolution based on plaintext not supported, use "+PlaintextSigningKeyResolver.class.getCanonicalName());

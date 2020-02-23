@@ -8,3 +8,4 @@ tests:
       - com.github.dfauth.jwt.KeyPairTestCase
       - com.github.dfauth.jwt.ProviderTestCase
       - com.github.dfauth.jwt.TestCase
+      - com.github.dfauth.jwt.scala.TestCase
