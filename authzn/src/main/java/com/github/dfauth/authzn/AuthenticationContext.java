@@ -1,6 +1,6 @@
 package com.github.dfauth.authzn;
 
-public interface UserContext<U> {
+public interface AuthenticationContext<U> {
     String token();
     String userId();
     U payload();

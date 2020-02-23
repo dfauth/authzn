@@ -18,10 +18,10 @@ public class ScrubbingPermissionTestCase extends FlintstonesTestScenario {
     private Company broker = new CompanyImpl("broker");
     private Company tc = new CompanyImpl("tc");
 
-    private UserContext<UserModelImpl> originatorUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator, Collections.singleton(role("trader"))));
-    private UserContext<UserModelImpl> brokerUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker, Collections.singleton(role("trader"))));
-    private UserContext<UserModelImpl> tcUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc, Collections.singleton(role("trader"))));
-    private UserContext<UserModelImpl> outsiderUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("george", new CompanyImpl("blah"), Collections.singleton(role("trader"))));
+    private AuthenticationContext<UserModelImpl> originatorUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator, Collections.singleton(role("trader"))));
+    private AuthenticationContext<UserModelImpl> brokerUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker, Collections.singleton(role("trader"))));
+    private AuthenticationContext<UserModelImpl> tcUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc, Collections.singleton(role("trader"))));
+    private AuthenticationContext<UserModelImpl> outsiderUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("george", new CompanyImpl("blah"), Collections.singleton(role("trader"))));
 
     // the model is immutable
     private RfqVisibilityModel<NegotiationUIEvent> model = new CreateNegotiationEvent(originator, broker, tc, 10, 100, "instrumentId");
@@ -34,7 +34,7 @@ public class ScrubbingPermissionTestCase extends FlintstonesTestScenario {
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(d);
 
         {
-            UserContext<UserModelImpl> userCtx = originatorUserCtx;
+            AuthenticationContext<UserModelImpl> userCtx = originatorUserCtx;
             UserModel u = userCtx.payload();
             Subject subject = userCtx.getSubject();
 
@@ -43,7 +43,7 @@ public class ScrubbingPermissionTestCase extends FlintstonesTestScenario {
         }
 
         {
-            UserContext<UserModelImpl> userCtx = brokerUserCtx;
+            AuthenticationContext<UserModelImpl> userCtx = brokerUserCtx;
             UserModel u = userCtx.payload();
             Subject subject = userCtx.getSubject();
 
@@ -52,7 +52,7 @@ public class ScrubbingPermissionTestCase extends FlintstonesTestScenario {
         }
 
         {
-            UserContext<UserModelImpl> userCtx = tcUserCtx;
+            AuthenticationContext<UserModelImpl> userCtx = tcUserCtx;
             UserModel u = userCtx.payload();
             Subject subject = userCtx.getSubject();
 
@@ -61,7 +61,7 @@ public class ScrubbingPermissionTestCase extends FlintstonesTestScenario {
         }
 
         {
-            UserContext<UserModelImpl> userCtx = outsiderUserCtx;
+            AuthenticationContext<UserModelImpl> userCtx = outsiderUserCtx;
             UserModel u = userCtx.payload();
             Subject subject = userCtx.getSubject();
 

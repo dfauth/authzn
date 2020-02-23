@@ -15,7 +15,7 @@ public class TestCase {
 
     private static final Logger logger = LoggerFactory.getLogger(TestCase.class);
 
-    private UserContext<UserModelImpl> ctx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC"), Collections.singleton(new Role("default","user"))));
+    private AuthenticationContext<UserModelImpl> ctx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC"), Collections.singleton(new Role("default","user"))));
     private Company originator = new CompanyImpl("originator");
     private Company broker = new CompanyImpl("broker");
     private Company tradingCompany = new CompanyImpl("tradingCompany");

@@ -21,10 +21,10 @@ public class RfqVisibilityModelTestCase {
     // the model is immutable
     private RfqVisibilityModel<NegotiationUIEvent> model = new CreateNegotiationEvent(originator, broker, tc, 10, 100, "instrumentId");
 
-    private UserContext<UserModelImpl> originatorUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator, Collections.emptySet()));
-    private UserContext<UserModelImpl> brokerUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker, Collections.emptySet()));
-    private UserContext<UserModelImpl> tcUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc, Collections.emptySet()));
-    private UserContext<UserModelImpl> outsiderUserCtx = new UserContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC"), Collections.emptySet()));
+    private AuthenticationContext<UserModelImpl> originatorUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", originator, Collections.emptySet()));
+    private AuthenticationContext<UserModelImpl> brokerUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", broker, Collections.emptySet()));
+    private AuthenticationContext<UserModelImpl> tcUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", tc, Collections.emptySet()));
+    private AuthenticationContext<UserModelImpl> outsiderUserCtx = new AuthenticationContextImpl("blahX0jkghfkbigfuckofftokenXwejJiuergydklhdklh", new UserModelImpl("fred", new CompanyImpl("ABC"), Collections.emptySet()));
 
     @Test
     public void testFiltering() {

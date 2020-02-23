@@ -6,12 +6,12 @@ import java.util.stream.Collectors;
 import static com.github.dfauth.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.authzn.PrincipalType.USER;
 
-public class UserContextImpl implements UserContext<UserModelImpl> {
+public class AuthenticationContextImpl implements AuthenticationContext<UserModelImpl> {
 
     private String token;
     private UserModelImpl payload;
 
-    public UserContextImpl(String token, UserModelImpl payload) {
+    public AuthenticationContextImpl(String token, UserModelImpl payload) {
         this.token = token;
         this.payload = payload;
     }

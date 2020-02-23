@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import com.github.dfauth.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory}
 import com.github.dfauth.auth.Directives._
-import com.github.dfauth.authzn.{AuthorizationPolicyMonadImpl, Subject, UserContext, UserModel}
+import com.github.dfauth.authzn.{AuthorizationPolicyMonadImpl, Subject, AuthenticationContext, UserModel}
 import com.github.dfauth.authzn.PrincipalType._
 import com.github.dfauth.authzn
 import com.typesafe.scalalogging.LazyLogging
@@ -43,5 +43,5 @@ object Routes extends LazyLogging {
 class TestPermission() extends authzn.Permission
 
 object service {
-  def call(userCtx:UserContext[_ <: UserModel]) = userCtx.userId()
+  def call(userCtx:AuthenticationContext[_ <: UserModel]) = userCtx.userId()
 }

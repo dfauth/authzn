@@ -3,7 +3,7 @@ package com.github.dfauth.auth
 import akka.http.scaladsl.model.headers.HttpChallenge
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
 import akka.http.scaladsl.server.Directives._
-import com.github.dfauth.authzn.{CompanyImpl, ImmutableSubject, Subject, User, UserContext, UserContextImpl, UserModel, UserModelImpl}
+import com.github.dfauth.authzn.{CompanyImpl, ImmutableSubject, Subject, User, AuthenticationContext, AuthenticationContextImpl, UserModel, UserModelImpl}
 import com.github.dfauth.authzn.PrincipalType._
 import com.github.dfauth.jwt.JWTVerifier
 import com.typesafe.scalalogging.LazyLogging
@@ -24,12 +24,12 @@ object Directives extends LazyLogging {
 
   def authRejection: Rejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenge("", ""))
 
-  def authenticate(verifier:JWTVerifier): Directive1[UserContext[_ <:UserModel]] = {
+  def authenticate(verifier:JWTVerifier): Directive1[AuthenticationContext[_ <:UserModel]] = {
     var user:User = null
     bearerToken.flatMap {
       case Some(token) => {
         verifier.authenticateToken(token, verifier.asUser) match {
-          case s:Success[User] => provide(new UserContextImpl(token,
+          case s:Success[User] => provide(new AuthenticationContextImpl(token,
             new UserModelImpl(s.get.getUserId,
               new CompanyImpl(s.get.getCompanyId),
               s.get.getRoles)));

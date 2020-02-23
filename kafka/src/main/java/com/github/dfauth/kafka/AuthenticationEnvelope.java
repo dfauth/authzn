@@ -2,13 +2,13 @@ package com.github.dfauth.kafka;
 
 import com.github.dfauth.authzn.Subject;
 import com.github.dfauth.authzn.User;
-import com.github.dfauth.authzn.UserContext;
+import com.github.dfauth.authzn.AuthenticationContext;
 import com.github.dfauth.authzn.avro.MetadataEnvelope;
 
 import java.util.Map;
 
 
-public class AuthenticationEnvelope<T> extends MetadataEnvelope<T> implements UserContext<T> {
+public class AuthenticationEnvelope<T> extends MetadataEnvelope<T> implements AuthenticationContext<T> {
 
     private final User user;
 
