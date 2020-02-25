@@ -81,8 +81,14 @@ public class AsyncBindingClient<I,O,U extends SpecificRecord, V extends Specific
             @Override
             public void onNext(MetadataEnvelope<Try<O>> e) {
                 e.getPayload()
-                        .onSuccess(v -> f.complete(e))
-                        .onFailure(t -> f.completeExceptionally(t));
+                        .onSuccess(v -> {
+                            f.complete(e);
+                            close();
+                        })
+                        .onFailure(t -> {
+                            f.completeExceptionally(t);
+                            close();
+                        });
             }
         };
 
@@ -95,55 +101,6 @@ public class AsyncBindingClient<I,O,U extends SpecificRecord, V extends Specific
                 .map(m -> m.mapPayload(template.responseTransformations().fromAvro()))
                 .to(Sink.fromSubscriber(subscriber))
                 .run(materializer);
-/**
-        return i -> {
-
-            CompletableFuture<MetadataEnvelope<Try<O>>> f = new CompletableFuture<>();
-
-            subscriber = new AbstractSubscriber<MetadataEnvelope<Try<O>>>(){
-                @Override
-                protected void _onSubscribe(Subscription s) {
-                    s.request(Long.MAX_VALUE);
-                }
-
-                @Override
-                public void onNext(MetadataEnvelope<Try<O>> e) {
-                    e.getPayload()
-                            .onSuccess(v -> f.complete(e))
-                            .onFailure(t -> f.completeExceptionally(t));
-                }
-            };
-
-            Source.single(i)
-                    .wireTap(m -> {
-                        TemporalAmount timeout = Optional.ofNullable(m.getMetadata().get(MetadataEnvelope.TIMEOUT))
-                                .map(s -> (TemporalAmount) Duration.ofMillis(Long.parseLong(s)))
-                                .orElse(consumerConfig.getTemporal("timeout"));
-                        timer.schedule(new TimerTask() {
-                            @Override
-                            public void run() {
-                                f.completeExceptionally(new TimeoutException("timed out after " + timeout));
-                            }
-                        }, timeout.get(ChronoUnit.SECONDS) * 1000);
-
-                    })
-                    .map(m -> i.correlationId().map(k -> {
-                        correlationId.set(k);
-                        return i;
-                    }).orElseGet(() -> {
-                        correlationId.set(groupId);
-                        return m.withCorrelationId(correlationId.get());
-                    }))
-                    .map(m -> m.inbound())
-                    .map(m -> m.mapPayload(template.requestTransformations().toAvro()))
-                    .map(e -> inEnvelopeHandler.envelope(e))
-                    .to(Sink.fromSubscriber(sink))
-                    .run(materializer);
-
-
-            return f;
-        };
- **/
     }
 
     public CompletableFuture<MetadataEnvelope<Try<O>>> call(MetadataEnvelope<I> envelope) {
